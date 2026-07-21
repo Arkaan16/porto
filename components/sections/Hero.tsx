@@ -38,34 +38,24 @@ const iconPaths: Record<string, ReactNode> = {
 
 export default function Hero() {
   const [displayed, setDisplayed] = useState("");
+  const [typingDone, setTypingDone] = useState(false);
   const fullName = profile.name;
 
   useEffect(() => {
     let i = 0;
-    let dir: "forward" | "backward" = "forward";
     let pause: ReturnType<typeof setTimeout> | null = null;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisplayed("");
+    setTypingDone(false);
 
     const tick = () => {
-      if (dir === "forward") {
-        i++;
-        setDisplayed(fullName.slice(0, i));
-        if (i >= fullName.length) {
-          dir = "backward";
-          pause = setTimeout(tick, 1500);
-          return;
-        }
+      i++;
+      setDisplayed(fullName.slice(0, i));
+      if (i < fullName.length) {
+        pause = setTimeout(tick, 80);
       } else {
-        i--;
-        setDisplayed(fullName.slice(0, i));
-        if (i <= 0) {
-          dir = "forward";
-          pause = setTimeout(tick, 800);
-          return;
-        }
+        setTypingDone(true);
       }
-      pause = setTimeout(tick, dir === "forward" ? 80 : 40);
     };
 
     pause = setTimeout(tick, 300);
@@ -73,29 +63,11 @@ export default function Hero() {
   }, [fullName]);
 
   return (
-    <section id="hero" className="relative min-h-screen flex items-center justify-center px-4 pt-20 overflow-hidden">
-      {/* Flag-waving background */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <svg className="absolute inset-0 w-[200%] h-full" viewBox="0 0 2400 800" preserveAspectRatio="none">
-          {Array.from({ length: 18 }, (_, i) => {
-            const y = 20 + i * 42;
-            const delay = i * 0.25;
-            const speed = 4 + (i % 3) * 1.5;
-            const strokeColor = i % 2 === 0 ? "#1e3a8a" : "#2563eb";
-            const opacity = 0.2 + (i % 4) * 0.06;
-            return (
-              <g key={i} style={{ animation: `flag-wave ${speed}s ease-in-out infinite`, animationDelay: `${delay}s` }}>
-                <path
-                  d={`M0,${y} C60,${y - 28} 120,${y + 28} 180,${y} C240,${y - 28} 300,${y + 28} 360,${y} C420,${y - 28} 480,${y + 28} 540,${y} C600,${y - 28} 660,${y + 28} 720,${y} C780,${y - 28} 840,${y + 28} 900,${y} C960,${y - 28} 1020,${y + 28} 1080,${y} C1140,${y - 28} 1200,${y + 28} 1260,${y} C1320,${y - 28} 1380,${y + 28} 1440,${y} C1500,${y - 28} 1560,${y + 28} 1620,${y} C1680,${y - 28} 1740,${y + 28} 1800,${y} C1860,${y - 28} 1920,${y + 28} 1980,${y} C2040,${y - 28} 2100,${y + 28} 2160,${y} C2220,${y - 28} 2280,${y + 28} 2400,${y}`}
-                  fill="none"
-                  stroke={strokeColor}
-                  strokeWidth="2"
-                  opacity={opacity}
-                />
-              </g>
-            );
-          })}
-        </svg>
+    <section id="hero" className="relative min-h-screen flex items-center justify-center px-4 pt-10 overflow-hidden">
+      {/* Gradient background */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none"
+        style={{ maskImage: "linear-gradient(to bottom, black 60%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%)" }}>
+        <div className="absolute inset-0 animate-gradient bg-[length:400%_400%] bg-[linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb,#1e40af,#0f172a)]" />
       </div>
 
       <div className="max-w-4xl mx-auto text-center relative z-10">
@@ -112,7 +84,7 @@ export default function Hero() {
           className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 min-h-[1.2em] inline-block"
         >
           <span>{displayed}</span>
-          <span className="inline-block w-[3px] h-[1em] bg-blue-900 dark:bg-blue-400 ml-0.5 align-middle animate-[blink_0.8s_step-end_infinite]" />
+          {!typingDone && <span className="inline-block w-[3px] h-[1em] bg-blue-900 dark:bg-blue-400 ml-0.5 align-middle animate-[blink_0.8s_step-end_infinite]" />}
         </motion.h1>
 
         <motion.p

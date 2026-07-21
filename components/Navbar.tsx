@@ -21,9 +21,9 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-950/95 via-blue-900/95 to-blue-950/95 backdrop-blur-md border-b border-blue-800/50">
       <nav className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <a href="#hero" onClick={(e) => { e.preventDefault(); handleClick("#hero"); }} className="text-lg font-bold text-blue-900 dark:text-blue-400">
+        <a href="#hero" onClick={(e) => { e.preventDefault(); handleClick("#hero"); }} className="text-lg font-bold text-white">
           Faruq Arkaan
         </a>
 
@@ -33,14 +33,14 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               onClick={(e) => { e.preventDefault(); handleClick(link.href); }}
-              className="text-sm font-medium text-zinc-600 hover:text-blue-900 dark:text-zinc-400 dark:hover:text-blue-400 transition-colors"
+              className="text-sm font-medium text-blue-200 hover:text-white transition-colors"
             >
               {link.label}
             </a>
           ))}
           <a
             href="mailto:muhammadfaruqarkaan16@gmail.com"
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-blue-900 hover:bg-blue-100 transition-colors"
           >
             Let&apos;s Talk
           </a>
@@ -49,16 +49,16 @@ export default function Navbar() {
         <div className="flex md:hidden items-center gap-2">
           <a
             href="mailto:muhammadfaruqarkaan16@gmail.com"
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-blue-900 hover:bg-blue-100 transition-colors"
           >
             Let&apos;s Talk
           </a>
           <button
             onClick={() => setOpen(!open)}
-            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
             aria-label="Toggle menu"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-zinc-700 dark:text-zinc-300">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-blue-200">
               {open ? (
                 <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clipRule="evenodd" />
               ) : (
@@ -70,14 +70,14 @@ export default function Navbar() {
       </nav>
 
       {open && (
-        <div className="md:hidden border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <div className="md:hidden border-t border-blue-800/50 bg-blue-950/95">
           <div className="px-4 py-3 flex flex-col gap-2">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={(e) => { e.preventDefault(); handleClick(link.href); }}
-                className="px-3 py-2 rounded-lg text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 transition-colors"
+                className="px-3 py-2 rounded-lg text-sm font-medium text-blue-200 hover:bg-white/10 transition-colors"
               >
                 {link.label}
               </a>
