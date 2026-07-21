@@ -24,7 +24,7 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
       <nav className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <a href="#hero" onClick={(e) => { e.preventDefault(); handleClick("#hero"); }} className="text-lg font-bold text-blue-900 dark:text-blue-400">
-          Muhammad Faruq Arkaan
+          Faruq Arkaan
         </a>
 
         <div className="hidden md:flex items-center gap-6">
@@ -51,7 +51,7 @@ export default function Navbar() {
             href="mailto:muhammadfaruqarkaan16@gmail.com"
             className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors"
           >
-            Contact
+            Let&apos;s Talk
           </a>
           <button
             onClick={() => setOpen(!open)}
