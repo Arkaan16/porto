@@ -12,7 +12,7 @@ export default function About() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-12 text-center"
+          className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 text-center"
         >
           About Me
         </motion.h2>
@@ -51,7 +51,7 @@ export default function About() {
               {profile.role}
             </p>
             <h3 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 leading-tight">
-              Hi, I&apos;m {profile.name.split(" ")[0]}!
+              Hi, I&apos;m <span className="text-blue-700 dark:text-blue-400">{profile.name.split(" ")[2]}</span>!
             </h3>
             <p className="text-base text-zinc-600 dark:text-zinc-400 font-medium italic border-l-4 border-blue-700 dark:border-blue-400 pl-4 mb-4">
               &ldquo;{profile.tagline}&rdquo;

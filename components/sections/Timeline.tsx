@@ -29,7 +29,7 @@ function TimelineItem({
   title: string;
   subtitle: string;
   period: string;
-  description: string;
+  description?: string;
   badge?: string;
   index: number;
 }) {
@@ -92,7 +92,6 @@ export default function Timeline() {
         title: item.institution,
         subtitle: `${item.degree} - ${item.field}`,
         period: item.period,
-        description: item.description,
         badge,
       };
     }
@@ -121,10 +120,13 @@ export default function Timeline() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-8 text-center"
+          className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 text-center"
         >
-          Timeline
+          Journey
         </motion.h2>
+        <p className="text-zinc-600 dark:text-zinc-400 text-center max-w-xl mx-auto mb-8">
+          My journey through education, organizations, and professional experience.
+        </p>
 
         <div className="flex justify-center gap-2 mb-10">
           {tabs.map((tab) => (

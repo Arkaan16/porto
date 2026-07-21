@@ -31,10 +31,13 @@ export default function Skills() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-12 text-center"
+          className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 text-center"
         >
           Skills
         </motion.h2>
+        <p className="text-zinc-600 dark:text-zinc-400 text-center max-w-xl mx-auto mb-12">
+          Technologies, tools, and abilities I bring to every project.
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <motion.div
