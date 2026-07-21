@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,34 +17,15 @@ export const metadata: Metadata = {
   description: "Personal portfolio website built with Next.js",
 };
 
-const themeScript = `
-  (function() {
-    try {
-      var theme = localStorage.getItem('theme');
-      if (!theme) {
-        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    } catch (e) {}
-  })();
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
+    <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen flex flex-col antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        {children}
       </body>
     </html>
   );

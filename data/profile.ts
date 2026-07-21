@@ -6,7 +6,7 @@ export const profile = {
     "A fresh Computer Science graduate from Universitas Lampung with a passion spanning IT support, web development, and graphic design. I enjoy exploring new technologies, solving technical problems, and turning ideas into clean, functional digital solutions and I'm currently looking for the right opportunity to grow and make a meaningful contribution.",
   avatarUrl: "/prof.jpeg",
   aboutImage: "/pas.jpeg",
-  resumeUrl: "/cv.pdf",
+  resumeUrl: "/Muhammad Faruq Arkaan-resume.pdf",
   socials: [
     { name: "LinkedIn", url: "https://www.linkedin.com/in/muhammad-faruq-arkaan-677b46293/", icon: "linkedin" },
     { name: "GitHub", url: "https://github.com/Arkaan16", icon: "github" },

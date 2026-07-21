@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
   { label: "Home", href: "#hero" },
@@ -22,7 +21,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
       <nav className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <a href="#hero" onClick={(e) => { e.preventDefault(); handleClick("#hero"); }} className="text-lg font-bold text-blue-900 dark:text-blue-400">
           Muhammad Faruq Arkaan
@@ -39,11 +38,21 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-          <ThemeToggle />
+          <a
+            href="mailto:muhammadfaruqarkaan16@gmail.com"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+          >
+            Let&apos;s Talk
+          </a>
         </div>
 
         <div className="flex md:hidden items-center gap-2">
-          <ThemeToggle />
+          <a
+            href="mailto:muhammadfaruqarkaan16@gmail.com"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+          >
+            Contact
+          </a>
           <button
             onClick={() => setOpen(!open)}
             className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
