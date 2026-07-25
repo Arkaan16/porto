@@ -35,9 +35,9 @@ const iconPaths: Record<string, ReactNode> = {
 
 export default function Footer() {
   return (
-    <footer className="py-8 px-4 border-t border-zinc-200 dark:border-zinc-800">
+    <footer className="py-8 px-4 bg-gradient-to-r from-blue-950/95 via-blue-900/95 to-blue-950/95 border-t border-blue-800/50">
       <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-sm text-zinc-500 dark:text-zinc-500">
+        <p className="text-sm text-blue-200">
           &copy; {new Date().getFullYear()} {profile.name}. All rights reserved.
         </p>
         <div className="flex items-center gap-3">
@@ -47,7 +47,7 @@ export default function Footer() {
               href={s.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-blue-900 hover:text-white dark:hover:bg-blue-600 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-blue-200 hover:bg-white/20 hover:text-white transition-colors"
               aria-label={s.name}
             >
               {iconPaths[s.icon]}

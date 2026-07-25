@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
   { label: "Home", href: "#hero" },
@@ -38,6 +39,7 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
+          <ThemeToggle />
           <a
             href="mailto:muhammadfaruqarkaan16@gmail.com"
             className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-blue-900 hover:bg-blue-100 transition-colors"
@@ -82,6 +84,9 @@ export default function Navbar() {
                 {link.label}
               </a>
             ))}
+            <div className="px-3 pt-2 border-t border-blue-800/50">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       )}

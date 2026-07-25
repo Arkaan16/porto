@@ -6,7 +6,7 @@ import { profile } from "@/data/profile";
 
 export default function About() {
   return (
-    <section id="about" className="py-20 px-4">
+    <section id="about" className="py-20 px-4 bg-zinc-50 dark:bg-zinc-900/50">
       <div className="max-w-4xl mx-auto">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}

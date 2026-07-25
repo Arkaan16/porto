@@ -81,17 +81,17 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-4xl sm:text-5xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 min-h-[1.2em] inline-block"
+          className="text-4xl sm:text-5xl font-bold text-white mb-2 min-h-[1.2em] inline-block"
         >
           <span>{displayed}</span>
-          {!typingDone && <span className="inline-block w-[3px] h-[1em] bg-blue-900 dark:bg-blue-400 ml-0.5 align-middle animate-[blink_0.8s_step-end_infinite]" />}
+          {!typingDone && <span className="inline-block w-[3px] h-[1em] bg-white ml-0.5 align-middle animate-[blink_0.8s_step-end_infinite]" />}
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-lg sm:text-xl text-blue-700 dark:text-blue-400 font-medium mb-4"
+          className="text-lg sm:text-xl text-blue-200 dark:text-blue-400 font-medium mb-4"
         >
           {profile.role}
         </motion.p>
@@ -100,7 +100,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="max-w-lg mx-auto text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed"
+          className="max-w-lg mx-auto text-zinc-300 dark:text-zinc-400 mb-6 leading-relaxed"
         >
           {profile.tagline}
         </motion.p>
