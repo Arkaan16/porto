@@ -1,196 +1,794 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
 import Image from "next/image";
-import { projects, designProjects } from "@/data/profile";
+import { designProjects, projects } from "@/data/profile";
+import Reveal from "@/components/ui/Reveal";
+import SectionHeading from "@/components/ui/SectionHeading";
+import TiltCard from "@/components/ui/TiltCard";
 
-const tabs = [
+type TabKey = "web" | "design";
+type Project = (typeof projects)[number];
+type ActionIconName = "arrow" | "code" | "close" | "left" | "right" | "expand";
+
+const tabs: { key: TabKey; label: string }[] = [
   { key: "web", label: "Web" },
   { key: "design", label: "Design" },
 ];
 
-export default function Projects() {
-  const [activeTab, setActiveTab] = useState<"web" | "design">("web");
-  const [selected, setSelected] = useState<(typeof projects)[number] | null>(null);
+const panelVariants: Variants = {
+  enter: (direction: number) => ({ opacity: 0, x: direction * 40 }),
+  center: { opacity: 1, x: 0 },
+  exit: (direction: number) => ({ opacity: 0, x: direction * -40 }),
+};
+
+const actionIconPaths: Record<ActionIconName, ReactNode> = {
+  arrow: (
+    <>
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </>
+  ),
+  code: (
+    <>
+      <path d="m9 8-4 4 4 4" />
+      <path d="m15 8 4 4-4 4" />
+    </>
+  ),
+  close: (
+    <>
+      <path d="M6 6 18 18" />
+      <path d="M18 6 6 18" />
+    </>
+  ),
+  left: <path d="m15 6-6 6 6 6" />,
+  right: <path d="m9 6 6 6-6 6" />,
+  expand: (
+    <>
+      <path d="M9 4H4v5" />
+      <path d="m4 4 6 6" />
+      <path d="M15 20h5v-5" />
+      <path d="m20 20-6-6" />
+    </>
+  ),
+};
+
+const designRevealVariants = [
+  "fade-up",
+  "zoom",
+  "blur-in",
+  "fade-right",
+] as const;
+
+function ActionIcon({
+  name,
+  className = "",
+}: {
+  name: ActionIconName;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={`h-4 w-4 ${className}`}
+    >
+      {actionIconPaths[name]}
+    </svg>
+  );
+}
+
+function getFocusable(container: HTMLElement | null) {
+  if (!container) return [] as HTMLElement[];
+
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  );
+}
+
+function useDialogBehavior<T extends HTMLElement>(
+  open: boolean,
+  dialogRef: RefObject<T | null>,
+  triggerRef: RefObject<HTMLElement | null>,
+  onClose: () => void,
+  onPrev?: () => void,
+  onNext?: () => void,
+) {
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const dialog = dialogRef.current;
+    const focusables = getFocusable(dialog);
+    (focusables[0] ?? dialog)?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key === "Tab") {
+        const items = getFocusable(dialog);
+
+        if (!items.length) {
+          event.preventDefault();
+          dialog?.focus();
+          return;
+        }
+
+        const first = items[0];
+        const last = items[items.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+
+        return;
+      }
+
+      if (event.key === "ArrowLeft" && onPrev) {
+        event.preventDefault();
+        onPrev();
+      }
+
+      if (event.key === "ArrowRight" && onNext) {
+        event.preventDefault();
+        onNext();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      triggerRef.current?.focus();
+    };
+  }, [open, dialogRef, triggerRef, onClose, onPrev, onNext]);
+}
+
+function WebProjectCard({
+  project,
+  index,
+  onDetail,
+}: {
+  project: Project;
+  index: number;
+  onDetail: (project: Project, trigger: HTMLButtonElement) => void;
+}) {
+  const number = String(index + 1).padStart(2, "0");
 
   return (
-    <section id="projects" className="py-20 px-4">
-      <div className="max-w-5xl mx-auto">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 text-center"
+    <Reveal
+      variant="fade-up"
+      delay={Math.min(index * 0.08, 0.32)}
+      className="h-full"
+    >
+      <TiltCard
+        max={6}
+        glare={false}
+        outerClassName="h-full w-full"
+        className="group/card relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-zinc-200/80 bg-zinc-900 shadow-lg shadow-blue-950/10 dark:border-zinc-700/60"
+      >
+        <Image
+          src={project.thumbnail}
+          alt={project.title}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="object-cover transition-transform duration-700 ease-out group-hover/card:scale-110"
+        />
+
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/30 to-transparent opacity-95 transition-opacity duration-500 group-hover/card:opacity-100"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-700/30 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-4 top-1 font-mono text-6xl font-bold leading-none text-white/10 transition-transform duration-700 group-hover/card:-translate-y-1"
         >
-          Projects
-        </motion.h2>
-        <p className="text-zinc-600 dark:text-zinc-400 text-center max-w-xl mx-auto mb-8">
-          A collection of web applications and design projects I have worked on.
-        </p>
+          {number}
+        </span>
 
-        <div className="flex justify-center gap-2 mb-10">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as "web" | "design")}
-              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "bg-blue-900 text-white"
-                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === "web" ? (
-          <div className="flex flex-wrap justify-center gap-6">
-            {projects.map((project, i) => (
-              <motion.article
-                key={project.id}
-                className="group rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900 hover:shadow-lg transition-shadow w-full md:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
+        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+          <div className="flex flex-wrap gap-1.5">
+            {project.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-[9px] font-medium text-white/80 backdrop-blur-sm"
               >
-                <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                  <Image
-                    src={project.thumbnail}
-                    alt={project.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">{project.title}</h3>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 line-clamp-2">{project.description}</p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {project.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSelected(project)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
-                    >
-                      Detail
-                    </button>
-                    {project.sourceUrl && (
-                      <a
-                        href={project.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                      >
-                        Source
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </motion.article>
+                {tag}
+              </span>
             ))}
           </div>
-        ) : (
-          <div className="flex flex-wrap -m-1.5 md:-m-2">
-            {designProjects.map((item) => {
-              const isWide = item.span === "col-span-2";
-              return (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  className={`p-1.5 md:p-2 shrink-0 ${
-                    isWide
-                      ? "w-full sm:w-2/3 md:w-1/2"
-                      : "w-1/2 sm:w-1/3 md:w-1/4"
-                  }`}
-                >
-                  <div className="rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 group cursor-pointer">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      width={0}
-                      height={0}
-                      sizes={
-                        isWide
-                          ? "(max-width: 640px) 100vw, (max-width: 768px) 66vw, 50vw"
-                          : "(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-                      }
-                      className="w-full h-auto group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
-      <AnimatePresence>
-        {selected && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setSelected(null)}
+          <h3 className="mt-3 font-display text-lg font-bold leading-tight text-white sm:text-xl">
+            {project.title}
+          </h3>
+          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-200/85">
+            {project.description}
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={(event) => onDetail(project, event.currentTarget)}
+              className="group/detail inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            >
+              <span>Detail</span>
+              <ActionIcon
+                name="arrow"
+                className="h-3.5 w-3.5 transition-transform duration-300 group-hover/detail:translate-x-1"
+              />
+            </button>
+            {project.sourceUrl && (
+              <a
+                href={project.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group/source inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              >
+                <span>Source</span>
+                <ActionIcon
+                  name="code"
+                  className="h-3.5 w-3.5 transition-transform duration-300 group-hover/source:-translate-y-0.5 group-hover/source:translate-x-0.5"
+                />
+              </a>
+            )}
+          </div>
+        </div>
+      </TiltCard>
+    </Reveal>
+  );
+}
+
+function ProjectDialog({
+  project,
+  titleId,
+  dialogRef,
+  onClose,
+}: {
+  project: Project;
+  titleId: string;
+  dialogRef: RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}) {
+  const reduced = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reduced ? 0 : 0.25 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-zinc-950/70 p-4 backdrop-blur-md sm:p-6"
+    >
+      <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        initial={
+          reduced
+            ? { opacity: 0 }
+            : { opacity: 0, scale: 0.96, y: 18, filter: "blur(10px)" }
+        }
+        animate={
+          reduced
+            ? { opacity: 1 }
+            : { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }
+        }
+        exit={
+          reduced
+            ? { opacity: 0 }
+            : { opacity: 0, scale: 0.98, y: 10, filter: "blur(6px)" }
+        }
+        transition={{ duration: reduced ? 0 : 0.35, ease: "easeOut" }}
+        onClick={(event) => event.stopPropagation()}
+        className="glass relative my-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-zinc-200/80 shadow-2xl outline-none dark:border-zinc-700/70"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close project details"
+          className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-zinc-950/40 text-white backdrop-blur-sm transition-colors hover:bg-zinc-950/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        >
+          <ActionIcon name="close" className="h-4 w-4" />
+        </button>
+
+        <div className="relative h-56 bg-zinc-900 sm:h-72">
+          <Image
+            src={project.thumbnail}
+            alt={project.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 48rem"
+            className="object-cover"
+          />
+          <span
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent"
+          />
+        </div>
+
+        <div className="p-6 sm:p-8">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.24em] text-blue-700 dark:text-blue-300">
+            Project detail
+          </p>
+          <h3
+            id={titleId}
+            className="mt-2 font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-3xl"
+          >
+            {project.title}
+          </h3>
+          <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base">
+            {project.description}
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {project.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-blue-200/80 bg-blue-50/80 px-3 py-1 font-mono text-[10px] font-medium text-blue-800 dark:border-blue-400/20 dark:bg-blue-400/10 dark:text-blue-200"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="group/detail inline-flex items-center gap-2 rounded-full bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:bg-blue-600 dark:hover:bg-blue-500"
+            >
+              <span>Close</span>
+              <ActionIcon
+                name="arrow"
+                className="h-4 w-4 transition-transform duration-300 group-hover/detail:translate-x-1"
+              />
+            </button>
+            {project.sourceUrl && (
+              <a
+                href={project.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group/source inline-flex items-center gap-2 rounded-full border border-zinc-300/80 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                <span>Source code</span>
+                <ActionIcon
+                  name="code"
+                  className="h-4 w-4 transition-transform duration-300 group-hover/source:-translate-y-0.5 group-hover/source:translate-x-0.5"
+                />
+              </a>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function DesignGallery({
+  onOpen,
+}: {
+  onOpen: (index: number, trigger: HTMLButtonElement) => void;
+}) {
+  return (
+    <div className="columns-2 gap-3 lg:columns-3 lg:gap-5 xl:columns-4">
+      {designProjects.map((item, index) => (
+        <Reveal
+          key={item.id}
+          variant={designRevealVariants[index % designRevealVariants.length]}
+          delay={(index % 4) * 0.06}
+          className="mb-3 break-inside-avoid lg:mb-5"
+        >
+          <button
+            type="button"
+            onClick={(event) => onOpen(index, event.currentTarget)}
+            aria-label={`Open ${item.title}`}
+            className="group relative block w-full overflow-hidden rounded-2xl border border-zinc-200/80 bg-zinc-200/60 text-left shadow-sm transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700/70 dark:bg-zinc-800/60"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-zinc-900 rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl border border-zinc-200 dark:border-zinc-800"
+              layoutId={`design-image-${item.id}`}
+              className="relative w-full overflow-hidden rounded-2xl"
             >
-              <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800">
-                <Image src={selected.thumbnail} alt={selected.title} fill className="object-cover" />
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-3">{selected.title}</h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">{selected.description}</p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {selected.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300"
-                    >
-                      {tag}
-                    </span>
+              <Image
+                src={item.image}
+                alt={item.title}
+                width={item.width}
+                height={item.height}
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="h-auto w-full transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+              />
+            </motion.div>
+          </button>
+        </Reveal>
+      ))}
+    </div>
+  );
+}
+
+function DesignLightbox({
+  index,
+  dialogRef,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  index: number | null;
+  dialogRef: RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const reduced = useReducedMotion();
+  const touchStartX = useRef(0);
+  const activeIndex = index ?? 0;
+  const item = index === null ? null : designProjects[index];
+
+  const handleTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    touchStartX.current = event.touches[0]?.clientX ?? 0;
+  };
+
+  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const endX = event.changedTouches[0]?.clientX ?? 0;
+    const delta = endX - touchStartX.current;
+
+    if (Math.abs(delta) < 50) return;
+
+    if (delta > 0) {
+      onPrev();
+    } else {
+      onNext();
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {item && (
+        <motion.div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Design preview: ${item.title}`}
+          tabIndex={-1}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduced ? 0 : 0.25 }}
+          onClick={onClose}
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/90 p-4 outline-none backdrop-blur-xl sm:p-8"
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 p-4 sm:p-6"
+          >
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-white/70">
+              {String(activeIndex + 1).padStart(2, "0")} /{" "}
+              {String(designProjects.length).padStart(2, "0")} · {item.title}
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close design preview"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            >
+              <ActionIcon name="close" className="h-4 w-4" />
+            </button>
+          </div>
+
+          <motion.div
+            layoutId={`design-image-${item.id}`}
+            transition={
+              reduced
+                ? { duration: 0 }
+                : { type: "spring", stiffness: 260, damping: 30 }
+            }
+            onClick={(event) => event.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="relative w-full max-w-6xl overflow-hidden rounded-2xl shadow-2xl"
+          >
+            <Image
+              src={item.image}
+              alt={item.title}
+              width={item.width}
+              height={item.height}
+              sizes="(max-width: 768px) 100vw, 90vw"
+              className="mx-auto h-auto max-h-[76vh] w-full object-contain"
+            />
+          </motion.div>
+
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-3 p-4 sm:p-6"
+          >
+            <button
+              type="button"
+              onClick={onPrev}
+              aria-label="Previous design"
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            >
+              <ActionIcon name="left" className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              aria-label="Next design"
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+            >
+              <ActionIcon name="right" className="h-5 w-5" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export default function Projects() {
+  const reduced = useReducedMotion();
+  const detailTitleId = useId();
+  const detailDialogRef = useRef<HTMLDivElement>(null);
+  const lightboxDialogRef = useRef<HTMLDivElement>(null);
+  const detailTriggerRef = useRef<HTMLElement | null>(null);
+  const lightboxTriggerRef = useRef<HTMLElement | null>(null);
+
+  const [activeTab, setActiveTab] = useState<TabKey>("web");
+  const [direction, setDirection] = useState(1);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const closeDetail = useCallback(() => setSelectedProject(null), []);
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+  const showPrev = useCallback(() => {
+    setLightboxIndex((current) =>
+      current === null
+        ? null
+        : (current - 1 + designProjects.length) % designProjects.length,
+    );
+  }, []);
+  const showNext = useCallback(() => {
+    setLightboxIndex((current) =>
+      current === null
+        ? null
+        : (current + 1) % designProjects.length,
+    );
+  }, []);
+
+  useDialogBehavior(
+    Boolean(selectedProject),
+    detailDialogRef,
+    detailTriggerRef,
+    closeDetail,
+  );
+  useDialogBehavior(
+    lightboxIndex !== null,
+    lightboxDialogRef,
+    lightboxTriggerRef,
+    closeLightbox,
+    showPrev,
+    showNext,
+  );
+
+  const selectTab = (next: TabKey) => {
+    if (next === activeTab) return;
+
+    const currentIndex = tabs.findIndex((tab) => tab.key === activeTab);
+    const nextIndex = tabs.findIndex((tab) => tab.key === next);
+
+    setDirection(nextIndex > currentIndex ? 1 : -1);
+    setActiveTab(next);
+    setSelectedProject(null);
+    setLightboxIndex(null);
+  };
+
+  const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+    event.preventDefault();
+    const currentIndex = tabs.findIndex((tab) => tab.key === activeTab);
+    const nextIndex =
+      (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) %
+      tabs.length;
+
+    selectTab(tabs[nextIndex].key);
+    const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>(
+      '[role="tab"]',
+    );
+    buttons[nextIndex]?.focus();
+  };
+
+  const openDetail = (project: Project, trigger: HTMLButtonElement) => {
+    detailTriggerRef.current = trigger;
+    setSelectedProject(project);
+  };
+
+  const openLightbox = (index: number, trigger: HTMLButtonElement) => {
+    lightboxTriggerRef.current = trigger;
+    setLightboxIndex(index);
+  };
+
+  return (
+    <LayoutGroup>
+      <section id="projects" className="relative isolate overflow-hidden px-4 py-24">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-zinc-50 to-white dark:from-[#0b1220] dark:via-zinc-950 dark:to-[#081426]" />
+          <div
+            className="absolute inset-0 dark:hidden"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 12% 18%, rgba(37,99,235,0.14), transparent 40%), radial-gradient(circle at 88% 28%, rgba(30,64,175,0.12), transparent 44%), radial-gradient(circle at 50% 90%, rgba(59,130,246,0.12), transparent 48%)",
+            }}
+          />
+          <div
+            className="absolute inset-0 hidden dark:block"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 12% 18%, rgba(37,99,235,0.24), transparent 42%), radial-gradient(circle at 88% 28%, rgba(59,130,246,0.18), transparent 46%), radial-gradient(circle at 50% 90%, rgba(30,64,175,0.24), transparent 50%)",
+            }}
+          />
+          <div
+            className="absolute -left-28 top-20 h-72 w-72 animate-float rounded-full bg-blue-400/25 blur-3xl motion-reduce:animate-none dark:bg-blue-600/15"
+            style={{ animationDelay: "1s", animationDuration: "10s" }}
+          />
+          <div
+            className="absolute -right-24 bottom-24 h-80 w-80 animate-float rounded-full bg-blue-500/20 blur-3xl motion-reduce:animate-none dark:bg-blue-700/15"
+            style={{ animationDelay: "3s", animationDuration: "11s" }}
+          />
+          <div className="absolute inset-0 blue-dots opacity-60 dark:opacity-40" />
+          <div className="absolute inset-0 grid-bg opacity-15 dark:opacity-10" />
+          <div className="absolute inset-0">
+            <div className="noise h-full w-full" />
+          </div>
+        </div>
+
+        <div className="relative mx-auto max-w-6xl">
+          <SectionHeading
+            eyebrow="03 / Portfolio"
+            title="Projects"
+            description="Selected web applications and visual work, built with curiosity and a lot of coffee."
+          />
+
+          <Reveal
+            variant="fade-up"
+            className="mt-10 flex justify-center"
+          >
+            <div
+              role="tablist"
+              aria-label="Project categories"
+              onKeyDown={handleTabKeyDown}
+              className="glass flex w-full max-w-xs items-center gap-1 rounded-full p-1.5"
+            >
+              {tabs.map((tab) => {
+                const active = activeTab === tab.key;
+
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    id={`projects-tab-${tab.key}`}
+                    aria-selected={active}
+                    aria-controls="projects-panel"
+                    tabIndex={active ? 0 : -1}
+                    onClick={() => selectTab(tab.key)}
+                    className={`relative flex-1 rounded-full px-4 py-2.5 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-offset-zinc-950 sm:text-sm ${
+                      active
+                        ? "text-white"
+                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                    }`}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="projects-tab-pill"
+                        aria-hidden
+                        className="absolute inset-0 rounded-full bg-blue-900 shadow-lg shadow-blue-900/20 dark:bg-blue-600"
+                        transition={
+                          reduced
+                            ? { duration: 0 }
+                            : { type: "spring", stiffness: 340, damping: 30 }
+                        }
+                      />
+                    )}
+                    <span className="relative z-10">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Reveal>
+
+          <AnimatePresence mode="wait" initial={false} custom={direction}>
+            <motion.div
+              key={activeTab}
+              id="projects-panel"
+              role="tabpanel"
+              aria-labelledby={`projects-tab-${activeTab}`}
+              custom={direction}
+              variants={panelVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: reduced ? 0 : 0.35, ease: "easeOut" }}
+              className="mt-10"
+            >
+              {activeTab === "web" ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+                  {projects.map((project, index) => (
+                    <WebProjectCard
+                      key={project.id}
+                      project={project}
+                      index={index}
+                      onDetail={openDetail}
+                    />
                   ))}
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                  >
-                    Back
-                  </button>
-                  {selected.sourceUrl && (
-                    <a
-                      href={selected.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 rounded-lg text-sm font-medium border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                    >
-                      Source Code
-                    </a>
-                  )}
-                </div>
-              </div>
+              ) : (
+                <DesignGallery onOpen={openLightbox} />
+              )}
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
+          </AnimatePresence>
+        </div>
+
+        <AnimatePresence>
+          {selectedProject && (
+            <ProjectDialog
+              project={selectedProject}
+              titleId={detailTitleId}
+              dialogRef={detailDialogRef}
+              onClose={closeDetail}
+            />
+          )}
+        </AnimatePresence>
+
+        <DesignLightbox
+          index={lightboxIndex}
+          dialogRef={lightboxDialogRef}
+          onClose={closeLightbox}
+          onPrev={showPrev}
+          onNext={showNext}
+        />
+      </section>
+    </LayoutGroup>
   );
 }

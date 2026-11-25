@@ -1,153 +1,414 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 import Image from "next/image";
 import { profile } from "@/data/profile";
+import SocialLinks from "@/components/ui/SocialLinks";
+import TiltCard from "@/components/ui/TiltCard";
+import { Icon } from "@/components/ui/Icon";
 
-import type { ReactNode } from "react";
+const roles = profile.role
+  .split("|")
+  .map((role) => role.trim())
+  .filter(Boolean);
 
-const iconPaths: Record<string, ReactNode> = {
-  linkedin: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-      <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
-    </svg>
-  ),
-  github: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-    </svg>
-  ),
-  instagram: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
-    </svg>
-  ),
-  email: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-      <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
-      <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-    </svg>
-  ),
-  spotify: (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
-    </svg>
-  ),
-};
+const floatingChips = [
+  { label: "Laravel", position: "left-0 top-2 sm:-left-4", delay: "0s", duration: "6s" },
+  { label: "Next.js", position: "-right-1 top-1/4 sm:-right-6", delay: "1.4s", duration: "7s" },
+  { label: "Tailwind", position: "-left-2 bottom-1/4 sm:-left-7", delay: "2.6s", duration: "6.5s" },
+  { label: "UI/UX", position: "bottom-2 right-0 sm:-right-3", delay: "0.7s", duration: "7.5s" },
+];
+
+interface MagneticLinkProps {
+  href: string;
+  children: ReactNode;
+  variant: "primary" | "secondary";
+  icon: "arrow-right" | "download";
+  download?: boolean;
+  className?: string;
+}
+
+function MagneticLink({
+  href,
+  children,
+  variant,
+  icon,
+  download,
+  className = "",
+}: MagneticLinkProps) {
+  const reduced = useReducedMotion();
+  const ref = useRef<HTMLAnchorElement>(null);
+  const pointerX = useMotionValue(0);
+  const pointerY = useMotionValue(0);
+  const x = useSpring(pointerX, { stiffness: 260, damping: 18 });
+  const y = useSpring(pointerY, { stiffness: 260, damping: 18 });
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    if (reduced || event.pointerType === "touch") return;
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    pointerX.set((event.clientX - (rect.left + rect.width / 2)) * 0.18);
+    pointerY.set((event.clientY - (rect.top + rect.height / 2)) * 0.3);
+  };
+
+  const reset = () => {
+    pointerX.set(0);
+    pointerY.set(0);
+  };
+
+  const isPrimary = variant === "primary";
+  const shimmer = isPrimary
+    ? "bg-[linear-gradient(110deg,transparent_35%,rgba(255,255,255,0.45)_50%,transparent_65%)]"
+    : "bg-[linear-gradient(110deg,transparent_35%,rgba(37,99,235,0.18)_50%,transparent_65%)]";
+
+  return (
+    <motion.a
+      ref={ref}
+      href={href}
+      download={download}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={reset}
+      style={reduced ? undefined : { x, y }}
+      whileTap={reduced ? undefined : { scale: 0.97 }}
+      className={`group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full px-6 py-3 text-sm font-semibold transition-colors sm:w-auto ${
+        isPrimary
+          ? "bg-blue-900 text-white shadow-lg shadow-blue-900/20 hover:bg-blue-800 dark:bg-blue-600 dark:shadow-blue-950/40 dark:hover:bg-blue-500"
+          : "border border-zinc-300/80 bg-white/60 text-zinc-800 backdrop-blur-sm hover:bg-white dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-100 dark:hover:bg-zinc-800"
+      } ${className}`}
+    >
+      <span className="relative z-10">{children}</span>
+      <Icon
+        name={icon}
+        className={`relative z-10 h-4 w-4 transition-transform duration-300 ${
+          icon === "arrow-right" ? "group-hover:translate-x-1" : "group-hover:translate-y-0.5"
+        }`}
+      />
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 z-0 animate-shimmer bg-[length:250%_100%] opacity-70 motion-reduce:animate-none ${shimmer}`}
+      />
+    </motion.a>
+  );
+}
 
 export default function Hero() {
+  const reduced = useReducedMotion();
+  const fullName = profile.name;
+  const lastSpace = fullName.lastIndexOf(" ");
+
   const [displayed, setDisplayed] = useState("");
   const [typingDone, setTypingDone] = useState(false);
-  const fullName = profile.name;
+  const [roleIndex, setRoleIndex] = useState(0);
+  const [splashReady, setSplashReady] = useState(false);
 
   useEffect(() => {
-    let i = 0;
-    let pause: ReturnType<typeof setTimeout> | null = null;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDisplayed("");
-    setTypingDone(false);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = () => setSplashReady(true);
+    const status = document.documentElement.dataset.splash;
 
+    if (status === "skip" || status === "done") {
+      timer = setTimeout(start, 0);
+    } else {
+      window.addEventListener("splash:done", start, { once: true });
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("splash:done", start);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!splashReady) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (reduced) {
+      timer = setTimeout(() => {
+        setDisplayed(fullName);
+        setTypingDone(true);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+
+    let index = 0;
     const tick = () => {
-      i++;
-      setDisplayed(fullName.slice(0, i));
-      if (i < fullName.length) {
-        pause = setTimeout(tick, 80);
+      index += 1;
+      setDisplayed(fullName.slice(0, index));
+      if (index < fullName.length) {
+        timer = setTimeout(tick, 72);
       } else {
         setTypingDone(true);
       }
     };
 
-    pause = setTimeout(tick, 300);
-    return () => { if (pause) clearTimeout(pause); };
-  }, [fullName]);
+    timer = setTimeout(tick, 320);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [fullName, reduced, splashReady]);
+
+  useEffect(() => {
+    if (!splashReady || reduced || roles.length < 2) return;
+
+    const timer = setInterval(() => {
+      setRoleIndex((current) => (current + 1) % roles.length);
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [reduced, roles.length, splashReady]);
+
+  const pointerX = useMotionValue(0);
+  const pointerY = useMotionValue(0);
+  const springX = useSpring(pointerX, { stiffness: 60, damping: 18 });
+  const springY = useSpring(pointerY, { stiffness: 60, damping: 18 });
+
+  const slowX = useTransform(springX, [-0.5, 0.5], [-14, 14]);
+  const slowY = useTransform(springY, [-0.5, 0.5], [-10, 10]);
+  const midX = useTransform(springX, [-0.5, 0.5], [-26, 26]);
+  const midY = useTransform(springY, [-0.5, 0.5], [-18, 18]);
+  const fastX = useTransform(springX, [-0.5, 0.5], [-40, 40]);
+  const fastY = useTransform(springY, [-0.5, 0.5], [-28, 28]);
+  const avatarX = useTransform(springX, [-0.5, 0.5], [-9, 9]);
+  const avatarY = useTransform(springY, [-0.5, 0.5], [-7, 7]);
+  const chipX = useTransform(springX, [-0.5, 0.5], [-11, 11]);
+  const chipY = useTransform(springY, [-0.5, 0.5], [-9, 9]);
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    if (reduced || event.pointerType === "touch") return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    pointerX.set((event.clientX - rect.left) / rect.width - 0.5);
+    pointerY.set((event.clientY - rect.top) / rect.height - 0.5);
+  };
+
+  const resetParallax = () => {
+    pointerX.set(0);
+    pointerY.set(0);
+  };
+
+  const leading = displayed.slice(0, lastSpace + 1);
+  const lastWord = displayed.slice(lastSpace + 1);
 
   return (
-    <section id="hero" className="relative min-h-screen flex items-center justify-center px-4 pt-10 overflow-hidden">
-      {/* Gradient background */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none"
-        style={{ maskImage: "linear-gradient(to bottom, black 60%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%)" }}>
-        <div className="absolute inset-0 animate-gradient bg-[length:400%_400%] bg-[linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb,#1e40af,#0f172a)]" />
+    <section
+      id="hero"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={resetParallax}
+      className="relative isolate flex min-h-screen items-center overflow-hidden px-4 pb-28 pt-28 sm:px-6 lg:pt-32"
+    >
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 animate-gradient-shift bg-gradient-to-br from-blue-100 via-zinc-50 to-blue-100 bg-[length:200%_200%] motion-reduce:animate-none dark:from-[#0f172a] dark:via-[#09090b] dark:to-[#1e3a8a]" />
+
+        <div
+          className="absolute inset-0 dark:hidden"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 18% 18%, rgba(37,99,235,0.22), transparent 42%), radial-gradient(circle at 82% 26%, rgba(30,64,175,0.18), transparent 48%), radial-gradient(circle at 52% 88%, rgba(59,130,246,0.16), transparent 52%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 hidden dark:block"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 18% 18%, rgba(37,99,235,0.38), transparent 45%), radial-gradient(circle at 82% 26%, rgba(37,99,235,0.28), transparent 50%), radial-gradient(circle at 52% 88%, rgba(30,64,175,0.32), transparent 55%)",
+          }}
+        />
+
+        <motion.div
+          style={reduced ? undefined : { x: slowX, y: slowY }}
+          className="absolute -left-24 -top-20"
+        >
+          <div
+            className="h-72 w-72 animate-float rounded-full bg-blue-400/30 blur-3xl motion-reduce:animate-none sm:h-96 sm:w-96 dark:bg-blue-600/20"
+            style={{ animationDelay: "0s", animationDuration: "7s" }}
+          />
+        </motion.div>
+
+        <motion.div
+          style={reduced ? undefined : { x: midX, y: midY }}
+          className="absolute -right-24 top-1/4"
+        >
+          <div
+            className="h-80 w-80 animate-float rounded-full bg-blue-500/25 blur-3xl motion-reduce:animate-none dark:bg-blue-500/15"
+            style={{ animationDelay: "1.6s", animationDuration: "8s" }}
+          />
+        </motion.div>
+
+        <motion.div
+          style={reduced ? undefined : { x: fastX, y: fastY }}
+          className="absolute -bottom-28 left-1/3"
+        >
+          <div
+            className="h-80 w-80 animate-float rounded-full bg-blue-600/20 blur-3xl motion-reduce:animate-none sm:h-[26rem] sm:w-[26rem] dark:bg-blue-700/20"
+            style={{ animationDelay: "3s", animationDuration: "9s" }}
+          />
+        </motion.div>
+
+        <div className="absolute inset-0 grid-bg opacity-70 dark:opacity-40" />
+        <div className="absolute inset-0">
+          <div className="noise h-full w-full" />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[#fafafa] dark:to-[#09090b]" />
       </div>
 
-      <div className="max-w-4xl mx-auto text-center relative z-10">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
-          <div className="relative w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden ring-4 ring-blue-900/20 dark:ring-blue-400/30">
-            <Image src={profile.avatarUrl} alt={profile.name} fill className="object-cover" preload />
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+        <motion.div
+          initial={{ opacity: 0, y: reduced ? 0 : 14 }}
+          animate={
+            splashReady
+              ? { opacity: 1, y: 0 }
+              : { opacity: 0, y: reduced ? 0 : 14 }
+          }
+          transition={{ duration: reduced ? 0.15 : 0.45, ease: "easeOut" }}
+          className="order-2 text-center lg:order-1 lg:text-left"
+        >
+          <div className="flex flex-col items-center gap-2 lg:items-start">
+            <span className="inline-flex items-center gap-2 font-mono text-[10px] font-medium uppercase tracking-[0.3em] text-blue-700 dark:text-blue-300">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-600 opacity-60 motion-reduce:animate-none dark:bg-blue-400" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+              </span>
+              Open to opportunities
+            </span>
+
+            {reduced ? (
+              <p className="text-base font-semibold text-zinc-800 dark:text-blue-200 sm:text-lg">
+                {roles.join(" · ")}
+              </p>
+            ) : (
+              <div className="flex h-7 items-center overflow-hidden sm:h-8">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.p
+                    key={roles[roleIndex]}
+                    initial={{ y: "100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: "-100%", opacity: 0 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="text-base font-semibold text-zinc-800 dark:text-blue-200 sm:text-lg"
+                  >
+                    {roles[roleIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+
+          <h1
+            aria-label={fullName}
+            className="mt-3 min-h-[1.1em] text-4xl font-bold leading-[1.05] text-zinc-900 dark:text-white sm:text-5xl xl:text-6xl"
+          >
+            <span aria-hidden>
+              {leading}
+              <span className="text-gradient">{lastWord}</span>
+            </span>
+            {!typingDone && (
+              <span
+                aria-hidden
+                className="ml-1 inline-block h-[0.85em] w-[3px] translate-y-[0.06em] animate-[blink_0.9s_step-end_infinite] rounded-full bg-blue-700 align-middle motion-reduce:animate-none dark:bg-blue-300"
+              />
+            )}
+          </h1>
+
+          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base lg:mx-0">
+            {profile.tagline}
+          </p>
+
+          <SocialLinks className="mt-7 justify-center lg:justify-start" />
+
+          <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
+            <MagneticLink href="#projects" variant="primary" icon="arrow-right">
+              View Projects
+            </MagneticLink>
+            {profile.resumeUrl && (
+              <MagneticLink
+                href={profile.resumeUrl}
+                variant="secondary"
+                icon="download"
+                download
+              >
+                Download CV
+              </MagneticLink>
+            )}
           </div>
         </motion.div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-4xl sm:text-5xl font-bold text-white mb-2 min-h-[1.2em] inline-block"
-        >
-          <span>{displayed}</span>
-          {!typingDone && <span className="inline-block w-[3px] h-[1em] bg-white ml-0.5 align-middle animate-[blink_0.8s_step-end_infinite]" />}
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-lg sm:text-xl text-blue-200 dark:text-blue-400 font-medium mb-4"
-        >
-          {profile.role}
-        </motion.p>
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="max-w-lg mx-auto text-zinc-300 dark:text-zinc-400 mb-6 leading-relaxed"
-        >
-          {profile.tagline}
-        </motion.p>
-
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="flex items-center justify-center gap-3 mb-8"
+          initial={{ opacity: 0, scale: reduced ? 1 : 0.96 }}
+          animate={
+            splashReady
+              ? { opacity: 1, scale: 1 }
+              : { opacity: 0, scale: reduced ? 1 : 0.96 }
+          }
+          transition={{ duration: reduced ? 0.15 : 0.5, ease: "easeOut" }}
+          style={reduced ? undefined : { x: avatarX, y: avatarY }}
+          className="order-1 relative mx-auto mt-2 h-60 w-60 sm:h-72 sm:w-72 lg:order-2 lg:mt-0 lg:h-[21rem] lg:w-[21rem]"
         >
-          {profile.socials.map((s) => (
-            <a
-              key={s.name}
-              href={s.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-blue-900 hover:text-white dark:hover:bg-blue-600 transition-colors"
-              aria-label={s.name}
+          <div className="absolute -inset-12 rounded-full bg-blue-500/20 blur-3xl dark:bg-blue-500/10" />
+          <div className="absolute -inset-[10px] animate-spin-slow rounded-full bg-[conic-gradient(from_0deg,#1e3a8a,#2563eb,#bfdbfe,#1e40af,#1e3a8a)] blur-[1px] motion-reduce:animate-none" />
+          <div className="absolute -inset-[5px] rounded-full bg-[#fafafa] dark:bg-[#09090b]" />
+
+          <div className="relative z-10 h-full w-full">
+            <TiltCard
+              outerClassName="h-full w-full"
+              className="h-full w-full overflow-hidden rounded-full ring-1 ring-blue-900/10 dark:ring-blue-300/20"
             >
-              {iconPaths[s.icon]}
-            </a>
+              <Image
+                src={profile.avatarUrl}
+                alt={profile.name}
+                fill
+                sizes="(max-width: 640px) 15rem, (max-width: 1024px) 18rem, 21rem"
+                className="object-cover"
+                preload
+              />
+            </TiltCard>
+          </div>
+
+          {floatingChips.map((chip) => (
+            <motion.div
+              key={chip.label}
+              style={reduced ? undefined : { x: chipX, y: chipY }}
+              className={`absolute z-20 ${chip.position}`}
+            >
+              <div
+                className="animate-float rounded-full border border-blue-200/80 bg-white/80 px-3 py-1.5 font-mono text-[10px] font-medium text-blue-800 shadow-sm shadow-blue-900/5 backdrop-blur-sm motion-reduce:animate-none sm:text-xs dark:border-blue-400/20 dark:bg-zinc-900/70 dark:text-blue-200"
+                style={{ animationDelay: chip.delay, animationDuration: chip.duration }}
+              >
+                {chip.label}
+              </div>
+            </motion.div>
           ))}
         </motion.div>
+      </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="flex items-center justify-center gap-4"
-        >
-          <a
-            href="#projects"
-            onClick={(e) => { e.preventDefault(); document.querySelector("#projects")?.scrollIntoView({ behavior: "smooth" }); }}
-            className="px-6 py-3 rounded-lg bg-blue-900 text-white font-medium hover:bg-blue-800 transition-colors"
-          >
-            View Projects
-          </a>
-          {profile.resumeUrl && (
-            <a
-              href={profile.resumeUrl}
-              download
-              className="px-6 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-              Download CV
-            </a>
-          )}
-        </motion.div>
+      <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
+        <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-zinc-500 dark:text-zinc-400">
+          Scroll
+        </span>
+        <div className="flex h-8 w-5 items-start justify-center rounded-full border border-zinc-400/70 pt-1.5 dark:border-zinc-500/60">
+          <motion.span
+            className="h-1.5 w-1 rounded-full bg-blue-700 dark:bg-blue-300"
+            animate={
+              !splashReady || reduced
+                ? undefined
+                : { y: [0, 9, 0], opacity: [1, 0.35, 1] }
+            }
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
       </div>
     </section>
   );

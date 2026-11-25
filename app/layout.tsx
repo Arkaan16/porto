@@ -1,16 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import SplashScreen from "@/components/ui/SplashScreen";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const display = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sans = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -24,7 +33,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${display.variable} ${sans.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -36,12 +49,18 @@ export default function RootLayout({
                   else if (t === "dark") document.documentElement.classList.add("dark");
                   else if (window.matchMedia("(prefers-color-scheme: light)").matches) document.documentElement.classList.remove("dark");
                 } catch(e) {}
+                try {
+                  if (sessionStorage.getItem("porto:splash-seen") === "1") {
+                    document.documentElement.setAttribute("data-splash", "skip");
+                  }
+                } catch(e) {}
               })();
             `,
           }}
         />
       </head>
       <body className="min-h-screen flex flex-col antialiased">
+        <SplashScreen />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

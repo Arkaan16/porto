@@ -1,12 +1,14 @@
 export const profile = {
   name: "Muhammad Faruq Arkaan",
+  nickname: "Arkaan",
   role: "IT Support | Web Developer | Graphic Designer",
   tagline: "A fresh graduate eager to grow at the intersection of IT Support, Web Development, and Graphic Design",
   description:
     "A fresh Computer Science graduate from Universitas Lampung with a passion spanning IT support, web development, and graphic design. I enjoy exploring new technologies, solving technical problems, and turning ideas into clean, functional digital solutions and I'm currently looking for the right opportunity to grow and make a meaningful contribution.",
-  avatarUrl: "/prof.jpeg",
-  aboutImage: "/ab.jpeg",
+  avatarUrl: "/prof.webp",
+  aboutImage: "/ab.webp",
   resumeUrl: "/CV_Muhammad Faruq Arkaan.pdf",
+  location: "Bandar Lampung, Indonesia",
   socials: [
     { name: "LinkedIn", url: "https://www.linkedin.com/in/muhammad-faruq-arkaan-677b46293/", icon: "linkedin" },
     { name: "GitHub", url: "https://github.com/Arkaan16", icon: "github" },
@@ -15,6 +17,15 @@ export const profile = {
     { name: "Email", url: "mailto:muhammadfaruqarkaan16@gmail.com", icon: "email" },
   ],
 };
+
+export const navLinks = [
+  { label: "Home", href: "#hero" },
+  { label: "About", href: "#about" },
+  { label: "Journey", href: "#timeline" },
+  { label: "Projects", href: "#projects" },
+  { label: "Skills", href: "#skills" },
+  { label: "Contact", href: "#contact" },
+] as const;
 
 export const education = [
   {
@@ -57,7 +68,7 @@ export const experience = [
   },
   {
     id: 2,
-    company: "PT. Bukis Asam Tbk Tarahan Port",
+    company: "PT. Bukit Asam Tbk Tarahan Port",
     role: "IT Staff",
     period: "February 2025 - June 2025",
     description:
@@ -83,7 +94,7 @@ export const experience = [
     id: 5,
     company: "Universitas Lampung",
     role: "Teaching Assistant — Multimedia",
-    period: "August 2024 - December 2024 ",
+    period: "August 2024 - December 2024",
     description:
       "Assisted students in mastering multimedia software including Adobe Photoshop, Blender, CorelDRAW, Adobe Premiere, and Pivot Animator for design and animation projects.",
   },
@@ -168,21 +179,84 @@ export const softSkills = [
 ];
 
 export const designProjects = [
-  { id: 1,  title: "Brand Identity", image: "/designs/a.jpg",                    span: "col-span-2" },
-  { id: 2,  title: "UI Design",      image: "/designs/b.png",                    span: "col-span-2" },
-  { id: 3,  title: "Poster",         image: "/designs/c.png",                    span: "col-span-1" },
-  { id: 4,  title: "Illustration",   image: "/designs/gfx ditt Copy 2 [F773FE8].png", span: "col-span-1" },
-  { id: 5,  title: "Packaging",      image: "/designs/Project [1FAD9C7].png",    span: "col-span-1" },
-  { id: 6,  title: "Social Media",   image: "/designs/Project [2F46939].png",    span: "col-span-1" },
-  { id: 8,  title: "Photography",    image: "/designs/p.jpeg",    span: "col-span-1" },
-  { id: 9,  title: "Photography",    image: "/designs/k.jpeg",  span: "col-span-1" },
-  { id: 10, title: "Photography",    image: "/designs/Project 12 Copy [C4FC243].png", span: "col-span-1" },
-  { id: 11, title: "Photography",    image: "/designs/Project 13 [77ACC14].png",  span: "col-span-1" },
-  { id: 12, title: "Photography",    image: "/designs/Project 20 Copy [EE54AC3].png", span: "col-span-1" },
-  { id: 13, title: "Photography",    image: "/designs/Project 29 [60D8A9C].png",  span: "col-span-1" },
-  { id: 14, title: "Photography",    image: "/designs/Project Copy 2 [6C10CDF].png", span: "col-span-1" },
-  { id: 15, title: "Photography",    image: "/designs/f.png",                    span: "col-span-1" },
-  { id: 7,  title: "Photography",    image: "/designs/Project [6E4B937].png",    span: "col-span-2" },
+  { id: 1, title: "Brand Identity", image: "/designs/a.webp", width: 4940, height: 2707, wide: true },
+  { id: 2, title: "UI Design", image: "/designs/b.webp", width: 1920, height: 1080, wide: true },
+  { id: 3, title: "Poster", image: "/designs/c.webp", width: 1080, height: 1350, wide: false },
+  {
+    id: 4,
+    title: "Illustration",
+    image: "/designs/gfx ditt Copy 2 [F773FE8].webp",
+    width: 1080,
+    height: 1350,
+    wide: false,
+  },
+  {
+    id: 5,
+    title: "Packaging",
+    image: "/designs/Project [1FAD9C7].webp",
+    width: 1080,
+    height: 1080,
+    wide: false,
+  },
+  {
+    id: 6,
+    title: "Social Media",
+    image: "/designs/Project [2F46939].webp",
+    width: 1080,
+    height: 1080,
+    wide: false,
+  },
+  {
+    id: 7,
+    title: "Design work 07",
+    image: "/designs/Project [6E4B937].webp",
+    width: 2560,
+    height: 1440,
+    wide: true,
+  },
+  { id: 8, title: "Design work 08", image: "/designs/p.webp", width: 1080, height: 1074, wide: false },
+  { id: 9, title: "Design work 09", image: "/designs/k.webp", width: 1080, height: 1131, wide: false },
+  {
+    id: 10,
+    title: "Design work 10",
+    image: "/designs/Project 12 Copy [C4FC243].webp",
+    width: 1080,
+    height: 1350,
+    wide: false,
+  },
+  {
+    id: 11,
+    title: "Design work 11",
+    image: "/designs/Project 13 [77ACC14].webp",
+    width: 1080,
+    height: 1350,
+    wide: false,
+  },
+  {
+    id: 12,
+    title: "Design work 12",
+    image: "/designs/Project 20 Copy [EE54AC3].webp",
+    width: 736,
+    height: 981,
+    wide: false,
+  },
+  {
+    id: 13,
+    title: "Design work 13",
+    image: "/designs/Project 29 [60D8A9C].webp",
+    width: 1080,
+    height: 1080,
+    wide: false,
+  },
+  {
+    id: 14,
+    title: "Design work 14",
+    image: "/designs/Project Copy 2 [6C10CDF].webp",
+    width: 1440,
+    height: 1800,
+    wide: false,
+  },
+  { id: 15, title: "Design work 15", image: "/designs/f.webp", width: 2100, height: 2790, wide: false },
 ];
 
 export const contactEmail = "muhammadfaruqarkaan16@gmail.com";

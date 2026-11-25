@@ -1,166 +1,418 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { profile, contactEmail } from "@/data/profile";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { contactEmail, profile } from "@/data/profile";
+import { Icon } from "@/components/ui/Icon";
+import Reveal from "@/components/ui/Reveal";
+import SocialLinks from "@/components/ui/SocialLinks";
+
+type CopyStatus = "idle" | "copied" | "error";
+type SendStatus = "idle" | "loading" | "success" | "error";
+
+function FloatingField({
+  id,
+  label,
+  name,
+  type = "text",
+  multiline = false,
+  rows = 4,
+  autoComplete,
+}: {
+  id: string;
+  label: string;
+  name: string;
+  type?: string;
+  multiline?: boolean;
+  rows?: number;
+  autoComplete?: string;
+}) {
+  const fieldClass =
+    "peer w-full rounded-xl border border-zinc-200/80 bg-white/70 px-4 pb-2.5 pt-5 text-sm text-zinc-900 outline-none transition-colors placeholder:text-transparent focus:border-blue-400 dark:border-zinc-700/70 dark:bg-zinc-900/60 dark:text-zinc-100";
+
+  return (
+    <div className="relative">
+      {multiline ? (
+        <textarea
+          id={id}
+          name={name}
+          rows={rows}
+          required
+          placeholder=" "
+          className={`${fieldClass} resize-none`}
+        />
+      ) : (
+        <input
+          id={id}
+          name={name}
+          type={type}
+          autoComplete={autoComplete}
+          required
+          placeholder=" "
+          className={fieldClass}
+        />
+      )}
+      <label
+        htmlFor={id}
+        className="pointer-events-none absolute left-4 top-2 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500 transition-all duration-300 peer-placeholder-shown:top-4 peer-placeholder-shown:text-sm peer-placeholder-shown:normal-case peer-placeholder-shown:tracking-normal peer-focus:top-2 peer-focus:text-[10px] peer-focus:uppercase peer-focus:tracking-[0.14em] peer-focus:text-blue-700 dark:text-zinc-400 dark:peer-focus:text-blue-300"
+      >
+        {label}
+      </label>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-4 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-blue-700 via-blue-500 to-transparent transition-transform duration-500 peer-focus:scale-x-100"
+      />
+    </div>
+  );
+}
+
+function EmailCard() {
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  const copyEmail = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(contactEmail);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = contactEmail;
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand("copy");
+        document.body.removeChild(input);
+        if (!copied) throw new Error("Copy failed");
+      }
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopyStatus("idle"), 1800);
+  };
+
+  const statusIcon =
+    copyStatus === "copied" ? "check" : copyStatus === "error" ? "alert" : "copy";
+  const statusLabel =
+    copyStatus === "copied"
+      ? "Copied"
+      : copyStatus === "error"
+        ? "Failed"
+        : "Copy email";
+
+  return (
+    <Reveal variant="fade-left" className="h-full">
+      <div className="glass group relative h-full overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-blue-500/15 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
+        />
+        <div className="relative flex items-start gap-4">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
+            <Icon name="email" className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-zinc-900 dark:text-zinc-100">
+              Email
+            </h3>
+            <p className="mt-2 break-all text-sm text-zinc-600 dark:text-zinc-300">
+              {contactEmail}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <a
+                href={`mailto:${contactEmail}`}
+                className="text-sm font-semibold text-blue-800 underline decoration-blue-300 underline-offset-4 transition-colors hover:text-blue-600 dark:text-blue-300 dark:hover:text-blue-200"
+              >
+                Send a message
+              </a>
+              <button
+                type="button"
+                onClick={copyEmail}
+                aria-live="polite"
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:border-blue-300 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:text-blue-300"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={statusIcon}
+                    initial={{ opacity: 0, scale: 0.5, rotate: -30 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, rotate: 30 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Icon name={statusIcon} className="h-3.5 w-3.5" />
+                  </motion.span>
+                </AnimatePresence>
+                {statusLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {copyStatus !== "idle" && (
+            <motion.span
+              initial={{ opacity: 0, y: 6, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.9 }}
+              className={`absolute right-4 top-3 rounded-full px-2.5 py-1 font-mono text-[10px] font-medium shadow-sm ${
+                copyStatus === "copied"
+                  ? "bg-blue-900 text-white dark:bg-blue-600"
+                  : "bg-red-600 text-white"
+              }`}
+            >
+              {copyStatus === "copied" ? "Copied to clipboard" : "Copy failed"}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </div>
+    </Reveal>
+  );
+}
+
+function LocationCard() {
+  return (
+    <Reveal variant="zoom" delay={0.08} className="h-full">
+      <div className="glass relative flex h-full min-h-[13rem] flex-col overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/40 to-transparent dark:from-blue-950/40 dark:via-zinc-900/20 dark:to-transparent" />
+        <svg
+          viewBox="0 0 400 200"
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-full w-full"
+          aria-hidden
+        >
+          <path
+            d="M-20 150 C 50 130, 80 70, 160 92 S 280 48, 420 26"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="12"
+            className="text-blue-100/80 dark:text-blue-900/35"
+          />
+          <path
+            d="M30 -10 C 80 60, 120 80, 170 210"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            className="text-blue-100/70 dark:text-blue-900/30"
+          />
+          <path
+            d="M250 -10 C 240 70, 300 120, 280 210"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            className="text-blue-100/70 dark:text-blue-900/30"
+          />
+        </svg>
+
+        <span className="absolute left-1/2 top-1/2 grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center">
+          <span className="absolute h-full w-full animate-ping rounded-full bg-blue-500/50" />
+          <span className="relative h-3 w-3 rounded-full bg-blue-700 ring-4 ring-white/70 dark:bg-blue-400 dark:ring-zinc-900/70" />
+        </span>
+
+        <div className="relative mt-auto flex items-start gap-4">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
+            <Icon name="location" className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-zinc-900 dark:text-zinc-100">
+              Location
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{profile.location}</p>
+          </div>
+        </div>
+      </div>
+    </Reveal>
+  );
+}
+
+function SocialCard() {
+  return (
+    <Reveal variant="blur-in" delay={0.16} className="h-full">
+      <div className="glass relative h-full overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
+            <Icon name="github" className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-zinc-900 dark:text-zinc-100">
+              Social
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+              Find me around the web.
+            </p>
+          </div>
+        </div>
+        <SocialLinks size="sm" className="mt-5 flex-wrap" />
+      </div>
+    </Reveal>
+  );
+}
+
+function ContactForm() {
+  const reduced = useReducedMotion();
+  const [status, setStatus] = useState<SendStatus>("idle");
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const name = String(data.get("name") ?? "");
+    const email = String(data.get("email") ?? "");
+    const message = String(data.get("message") ?? "");
+
+    setStatus("loading");
+
+    // TODO: Replace this mailto fallback with a POST to an API route powered by Resend.
+    try {
+      const subject = encodeURIComponent(`Portfolio message from ${name}`);
+      const body = encodeURIComponent(`${message}\n\nFrom: ${name}\nEmail: ${email}`);
+      await new Promise((resolve) => setTimeout(resolve, reduced ? 0 : 450));
+      window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  const buttonLabel =
+    status === "loading"
+      ? "Preparing email..."
+      : status === "success"
+        ? "Email ready"
+        : status === "error"
+          ? "Try again"
+          : "Send message";
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="glass relative overflow-hidden rounded-3xl p-6 shadow-sm sm:p-8"
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-blue-500/15 blur-3xl"
+      />
+      <div className="relative flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-blue-700 dark:text-blue-300">
+            Say hello
+          </p>
+          <h3 className="mt-1 font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            Send a message
+          </h3>
+        </div>
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">
+          I usually reply within a day or two.
+        </p>
+      </div>
+
+      <div className="relative mt-7 space-y-5">
+        <FloatingField id="contact-name" name="name" label="Name" autoComplete="name" />
+        <FloatingField
+          id="contact-email"
+          name="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+        />
+        <FloatingField id="contact-message" name="message" label="Message" multiline />
+      </div>
+
+      <motion.button
+        type="submit"
+        disabled={status === "loading"}
+        whileHover={reduced ? undefined : { y: -2 }}
+        whileTap={reduced ? undefined : { scale: 0.99 }}
+        className="group relative mt-7 w-full overflow-hidden rounded-xl bg-blue-900 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-blue-600 dark:hover:bg-blue-500"
+      >
+        <span
+          aria-hidden
+          className="absolute inset-0 animate-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)] bg-[length:200%_100%]"
+        />
+        <span className="relative z-10 flex items-center justify-center gap-2">
+          {status === "loading" ? (
+            <motion.span
+              aria-hidden
+              className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 0.8, ease: "linear", repeat: Infinity }}
+            />
+          ) : (
+            <Icon
+              name={status === "success" ? "check" : status === "error" ? "alert" : "send"}
+              className="h-4 w-4"
+            />
+          )}
+          {buttonLabel}
+        </span>
+      </motion.button>
+
+      <AnimatePresence initial={false}>
+        {status !== "idle" && status !== "loading" && (
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className={`mt-3 text-center text-xs ${
+              status === "success"
+                ? "text-blue-800 dark:text-blue-300"
+                : "text-red-600 dark:text-red-400"
+            }`}
+          >
+            {status === "success"
+              ? "Your email app should open with the message ready."
+              : "Something went wrong. Please try again."}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </form>
+  );
+}
 
 export default function Contact() {
   return (
-    <section id="contact" className="py-20 px-4 bg-zinc-50 dark:bg-zinc-900/50">
-      <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-3">
-            Get In Touch
-          </h2>
-          <p className="text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto">
-            Have a project in mind, a question, or just want to say hi? I&apos;d love to hear from you.
-          </p>
-        </motion.div>
+    <section id="contact" className="relative isolate overflow-hidden px-4 py-24">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-zinc-50 to-white dark:from-[#0b1220] dark:via-zinc-950 dark:to-[#081426]" />
+        <div className="absolute inset-0 blue-dots opacity-50 dark:opacity-30" />
+        <div className="absolute inset-0 grid-bg opacity-15 dark:opacity-10" />
+        <div className="absolute inset-0">
+          <div className="noise h-full w-full" />
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="space-y-6"
-          >
-            <div className="p-6 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-blue-700 dark:text-blue-400">
-                    <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
-                    <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Email</h3>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{contactEmail}</p>
-                  <a
-                    href={`mailto:${contactEmail}`}
-                    className="text-sm font-medium text-blue-700 dark:text-blue-400 hover:underline mt-1 inline-block"
-                  >
-                    Send a message &rarr;
-                  </a>
-                </div>
-              </div>
-            </div>
+      <div className="relative mx-auto max-w-6xl">
+        <Reveal variant="blur-in">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-blue-700 dark:text-blue-300 sm:text-xs">
+              05 / Contact
+            </p>
+            <h2 className="mt-3 font-display text-4xl font-bold leading-[1.05] text-gradient sm:text-5xl lg:text-6xl">
+              Let&apos;s build something together
+            </h2>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base">
+              {profile.tagline}
+            </p>
+          </div>
+        </Reveal>
 
-            <div className="p-6 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-blue-700 dark:text-blue-400">
-                    <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
-                    <path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.432z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Location</h3>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Bandar Lampung, Indonesia</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-blue-700 dark:text-blue-400">
-                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Social Media</h3>
-                  <div className="flex items-center gap-2 mt-2">
-                    {profile.socials.map((s) => (
-                      <a
-                        key={s.name}
-                        href={s.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-blue-900 hover:text-white dark:hover:bg-blue-600 transition-colors"
-                        aria-label={s.name}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                          {s.icon === "linkedin" && <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />}
-                          {s.icon === "github" && <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />}
-                          {s.icon === "instagram" && <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />}
-                          {s.icon === "email" && <><path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" /><path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" /></>}
-                          {s.icon === "spotify" && <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />}
-                        </svg>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.15 }}
-            className="p-8 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"
-          >
-            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">
-              Send a Message
-            </h3>
-            <form
-              action={`mailto:${contactEmail}`}
-              encType="text/plain"
-              method="post"
-              className="space-y-5"
-            >
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-900/50 dark:focus:ring-blue-400/50 transition-shadow text-sm"
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-900/50 dark:focus:ring-blue-400/50 transition-shadow text-sm"
-                  placeholder="your@email.com"
-                />
-              </div>
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows={4}
-                  required
-                  className="w-full px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-900/50 dark:focus:ring-blue-400/50 transition-shadow text-sm resize-none"
-                  placeholder="Your message..."
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full px-6 py-3 rounded-lg bg-blue-900 text-white font-medium hover:bg-blue-800 transition-colors text-sm"
-              >
-                Send Message
-              </button>
-            </form>
-          </motion.div>
+        <div className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            <EmailCard />
+            <LocationCard />
+            <SocialCard />
+          </div>
+          <Reveal variant="fade-right" delay={0.2} className="h-full lg:col-span-3">
+            <ContactForm />
+          </Reveal>
         </div>
       </div>
     </section>
