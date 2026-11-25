@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
 import { profile } from "@/data/profile";
 
 const SPLASH_FLAG = "porto:splash-seen";
@@ -147,7 +153,7 @@ export default function SplashScreen() {
   };
 
   const instantExit = { opacity: 0, transition: { duration: 0 } };
-  const overlayVariants = {
+  const overlayVariants: Variants = {
     visible: { opacity: 1, transition: { duration: reduced ? 0.25 : 0.12 } },
     exit: reduced
       ? { opacity: 0, transition: { duration: 0.15 } }
