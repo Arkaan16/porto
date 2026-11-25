@@ -1,19 +1,25 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import { profile } from "@/data/profile";
 import { Icon } from "@/components/ui/Icon";
 import SocialLinks from "@/components/ui/SocialLinks";
 
 export default function Footer() {
   const reduced = useReducedMotion();
+  const footerRef = useRef<HTMLElement>(null);
+  const inView = useInView(footerRef, { amount: 0.2 });
 
   const backToTop = () => {
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
   };
 
   return (
-    <footer className="relative isolate overflow-hidden border-t border-blue-800/60 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 px-4 py-10 text-blue-100">
+    <footer
+      ref={footerRef}
+      className="relative isolate overflow-hidden border-t border-blue-800/60 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 px-4 py-10 text-blue-100"
+    >
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 blue-dots opacity-20" />
       </div>
@@ -34,12 +40,12 @@ export default function Footer() {
             onClick={backToTop}
             whileHover={reduced ? undefined : { y: -3 }}
             whileTap={reduced ? undefined : { scale: 0.97 }}
-            className="group inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            className="group inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             Back to top
             <motion.span
               aria-hidden
-              animate={reduced ? undefined : { y: [0, -3, 0] }}
+              animate={reduced || !inView ? undefined : { y: [0, -3, 0] }}
               transition={{ duration: 1.8, ease: "easeInOut", repeat: Infinity }}
               className="inline-flex"
             >

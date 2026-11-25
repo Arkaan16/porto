@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
+import { usePerformanceMode } from "./usePerformanceMode";
 
 interface MarqueeProps {
   children: ReactNode;
@@ -17,7 +18,16 @@ export default function Marquee({
   pauseOnHover = true,
   className = "",
 }: MarqueeProps) {
+  const { lite } = usePerformanceMode();
   const style = { "--marquee-duration": `${speed}s` } as CSSProperties;
+
+  if (lite) {
+    return (
+      <div className={`flex flex-wrap items-center justify-center gap-3 ${className}`}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div

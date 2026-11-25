@@ -9,6 +9,7 @@ import {
   type Variants,
 } from "framer-motion";
 import { profile } from "@/data/profile";
+import { usePerformanceMode } from "./usePerformanceMode";
 
 const SPLASH_FLAG = "porto:splash-seen";
 
@@ -28,6 +29,7 @@ type Phase = "intro" | "exit" | "done";
 
 export default function SplashScreen() {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
   const [phase, setPhase] = useState<Phase>("intro");
   const [progress, setProgress] = useState(0);
   const [atNinety, setAtNinety] = useState(false);
@@ -176,22 +178,22 @@ export default function SplashScreen() {
           initial="visible"
           animate="visible"
           exit={skipRef.current && finishedRef.current ? instantExit : "exit"}
-          className="fixed inset-0 z-[9999] overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1e3a8a] to-[#2563eb] bg-[length:200%_200%] text-white animate-gradient-shift motion-reduce:animate-none"
+          className="fixed inset-0 z-[9999] overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1e3a8a] to-[#2563eb] text-white"
         >
           <span className="sr-only">Loading portfolio</span>
 
-          {!reduced && (
+          {!reduced && !lite && (
             <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
               <div
-                className="absolute -left-24 top-1/5 h-72 w-72 animate-float rounded-full bg-blue-400/30 blur-3xl"
+                className="absolute -left-24 top-1/5 h-72 w-72 animate-float rounded-full bg-blue-400/30 blur-2xl"
                 style={{ animationDelay: "0s", animationDuration: "5.5s" }}
               />
               <div
-                className="absolute -right-20 top-1/3 h-80 w-80 animate-float rounded-full bg-blue-300/20 blur-3xl"
+                className="absolute -right-20 top-1/3 h-80 w-80 animate-float rounded-full bg-blue-300/20 blur-2xl"
                 style={{ animationDelay: "1.4s", animationDuration: "6.5s" }}
               />
               <div
-                className="absolute -bottom-28 left-1/3 h-96 w-96 animate-float rounded-full bg-blue-600/30 blur-3xl"
+                className="absolute -bottom-28 left-1/3 h-96 w-96 animate-float rounded-full bg-blue-600/30 blur-2xl"
                 style={{ animationDelay: "2.4s", animationDuration: "7.5s" }}
               />
             </div>
@@ -208,12 +210,11 @@ export default function SplashScreen() {
               variants={{
                 hidden: reduced
                   ? { opacity: 0 }
-                  : { opacity: 0, scale: 0.92, y: 12, filter: "blur(10px)" },
+                  : { opacity: 0, scale: 0.92, y: 12 },
                 visible: {
                   opacity: 1,
                   scale: 1,
                   y: 0,
-                  filter: "blur(0px)",
                   transition: reduced
                     ? { duration: 0 }
                     : { delay: 0.12, duration: 0.6, ease: "easeOut" },
@@ -269,11 +270,10 @@ export default function SplashScreen() {
                   aria-hidden
                   className="inline-block whitespace-pre"
                   variants={{
-                    hidden: reduced ? { opacity: 0 } : { opacity: 0, y: 8, filter: "blur(6px)" },
+                    hidden: reduced ? { opacity: 0 } : { opacity: 0, y: 8 },
                     visible: {
                       opacity: 1,
                       y: 0,
-                      filter: "blur(0px)",
                       transition: reduced
                         ? { duration: 0 }
                         : { delay: 0.42 + index * 0.035, duration: 0.36 },

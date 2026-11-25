@@ -6,6 +6,7 @@ import { education, profile } from "@/data/profile";
 import Lanyard from "@/components/ui/Lanyard";
 import Reveal from "@/components/ui/Reveal";
 import TiltCard from "@/components/ui/TiltCard";
+import { useInViewPause } from "@/components/ui/useInView";
 
 interface CountUpProps {
   value: number;
@@ -50,10 +51,12 @@ export default function About() {
   const graduationYearValue = Number.parseInt(graduationYear, 10);
   const gpa = "gpa" in primaryEducation ? primaryEducation.gpa : undefined;
   const gpaValue = gpa ? Number.parseFloat(gpa) : undefined;
+  const sectionRef = useInViewPause<HTMLElement>();
 
   return (
     <section
       id="about"
+      ref={sectionRef}
       className="relative overflow-hidden bg-zinc-50 px-4 py-24 dark:bg-zinc-900/50"
     >
       <div

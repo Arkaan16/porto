@@ -10,6 +10,7 @@ import {
 import {
   AnimatePresence,
   motion,
+  useInView,
   useMotionValue,
   useReducedMotion,
   useSpring,
@@ -20,6 +21,7 @@ import { profile } from "@/data/profile";
 import SocialLinks from "@/components/ui/SocialLinks";
 import TiltCard from "@/components/ui/TiltCard";
 import { Icon } from "@/components/ui/Icon";
+import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
 
 const roles = profile.role
   .split("|")
@@ -51,21 +53,43 @@ function MagneticLink({
   className = "",
 }: MagneticLinkProps) {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
   const ref = useRef<HTMLAnchorElement>(null);
   const pointerX = useMotionValue(0);
   const pointerY = useMotionValue(0);
-  const x = useSpring(pointerX, { stiffness: 260, damping: 18 });
-  const y = useSpring(pointerY, { stiffness: 260, damping: 18 });
+  const x = useSpring(pointerX, { stiffness: 220, damping: 22 });
+  const y = useSpring(pointerY, { stiffness: 220, damping: 22 });
+  const frameRef = useRef<number | null>(null);
+  const pendingRef = useRef({ x: 0, y: 0 });
+
+  useEffect(
+    () => () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    },
+    [],
+  );
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLAnchorElement>) => {
-    if (reduced || event.pointerType === "touch") return;
+    if (reduced || lite || event.pointerType === "touch") return;
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
-    pointerX.set((event.clientX - (rect.left + rect.width / 2)) * 0.18);
-    pointerY.set((event.clientY - (rect.top + rect.height / 2)) * 0.3);
+    pendingRef.current = {
+      x: (event.clientX - (rect.left + rect.width / 2)) * 0.18,
+      y: (event.clientY - (rect.top + rect.height / 2)) * 0.3,
+    };
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      pointerX.set(pendingRef.current.x);
+      pointerY.set(pendingRef.current.y);
+    });
   };
 
   const reset = () => {
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
     pointerX.set(0);
     pointerY.set(0);
   };
@@ -82,12 +106,12 @@ function MagneticLink({
       download={download}
       onPointerMove={handlePointerMove}
       onPointerLeave={reset}
-      style={reduced ? undefined : { x, y }}
+      style={reduced || lite ? undefined : { x, y }}
       whileTap={reduced ? undefined : { scale: 0.97 }}
       className={`group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full px-6 py-3 text-sm font-semibold transition-colors sm:w-auto ${
         isPrimary
           ? "bg-blue-900 text-white shadow-lg shadow-blue-900/20 hover:bg-blue-800 dark:bg-blue-600 dark:shadow-blue-950/40 dark:hover:bg-blue-500"
-          : "border border-zinc-300/80 bg-white/60 text-zinc-800 backdrop-blur-sm hover:bg-white dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          : "border border-zinc-300/80 bg-white/80 text-zinc-800 hover:bg-white dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:bg-zinc-800"
       } ${className}`}
     >
       <span className="relative z-10">{children}</span>
@@ -99,7 +123,7 @@ function MagneticLink({
       />
       <span
         aria-hidden
-        className={`pointer-events-none absolute inset-0 z-0 animate-shimmer bg-[length:250%_100%] opacity-70 motion-reduce:animate-none ${shimmer}`}
+        className={`pointer-events-none absolute inset-0 z-0 bg-[length:250%_100%] opacity-70 motion-reduce:animate-none ${lite ? "" : "animate-shimmer"} ${shimmer}`}
       />
     </motion.a>
   );
@@ -107,6 +131,9 @@ function MagneticLink({
 
 export default function Hero() {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
+  const heroRef = useRef<HTMLElement>(null);
+  const heroInView = useInView(heroRef, { amount: 0.05 });
   const fullName = profile.name;
   const lastSpace = fullName.lastIndexOf(" ");
 
@@ -163,14 +190,14 @@ export default function Hero() {
   }, [fullName, reduced, splashReady]);
 
   useEffect(() => {
-    if (!splashReady || reduced || roles.length < 2) return;
+    if (!splashReady || !heroInView || reduced || roles.length < 2) return;
 
     const timer = setInterval(() => {
       setRoleIndex((current) => (current + 1) % roles.length);
     }, 2000);
 
     return () => clearInterval(timer);
-  }, [reduced, roles.length, splashReady]);
+  }, [heroInView, reduced, roles.length, splashReady]);
 
   const pointerX = useMotionValue(0);
   const pointerY = useMotionValue(0);
@@ -188,14 +215,38 @@ export default function Hero() {
   const chipX = useTransform(springX, [-0.5, 0.5], [-11, 11]);
   const chipY = useTransform(springY, [-0.5, 0.5], [-9, 9]);
 
+  const parallaxFrameRef = useRef<number | null>(null);
+  const parallaxPendingRef = useRef({ x: 0, y: 0 });
+
+  useEffect(
+    () => () => {
+      if (parallaxFrameRef.current !== null) {
+        cancelAnimationFrame(parallaxFrameRef.current);
+      }
+    },
+    [],
+  );
+
   const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
-    if (reduced || event.pointerType === "touch") return;
+    if (reduced || lite || event.pointerType === "touch") return;
     const rect = event.currentTarget.getBoundingClientRect();
-    pointerX.set((event.clientX - rect.left) / rect.width - 0.5);
-    pointerY.set((event.clientY - rect.top) / rect.height - 0.5);
+    parallaxPendingRef.current = {
+      x: (event.clientX - rect.left) / rect.width - 0.5,
+      y: (event.clientY - rect.top) / rect.height - 0.5,
+    };
+    if (parallaxFrameRef.current !== null) return;
+    parallaxFrameRef.current = requestAnimationFrame(() => {
+      parallaxFrameRef.current = null;
+      pointerX.set(parallaxPendingRef.current.x);
+      pointerY.set(parallaxPendingRef.current.y);
+    });
   };
 
   const resetParallax = () => {
+    if (parallaxFrameRef.current !== null) {
+      cancelAnimationFrame(parallaxFrameRef.current);
+      parallaxFrameRef.current = null;
+    }
     pointerX.set(0);
     pointerY.set(0);
   };
@@ -206,12 +257,14 @@ export default function Hero() {
   return (
     <section
       id="hero"
+      ref={heroRef}
+      data-inview={heroInView ? "on" : "off"}
       onPointerMove={handlePointerMove}
       onPointerLeave={resetParallax}
       className="relative isolate flex min-h-screen items-center overflow-hidden px-4 pb-28 pt-28 sm:px-6 lg:pt-32"
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 animate-gradient-shift bg-gradient-to-br from-blue-100 via-zinc-50 to-blue-100 bg-[length:200%_200%] motion-reduce:animate-none dark:from-[#0f172a] dark:via-[#09090b] dark:to-[#1e3a8a]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-zinc-50 to-blue-100 dark:from-[#0f172a] dark:via-[#09090b] dark:to-[#1e3a8a]" />
 
         <div
           className="absolute inset-0 dark:hidden"
@@ -228,35 +281,39 @@ export default function Hero() {
           }}
         />
 
-        <motion.div
-          style={reduced ? undefined : { x: slowX, y: slowY }}
-          className="absolute -left-24 -top-20"
-        >
-          <div
-            className="h-72 w-72 animate-float rounded-full bg-blue-400/30 blur-3xl motion-reduce:animate-none sm:h-96 sm:w-96 dark:bg-blue-600/20"
-            style={{ animationDelay: "0s", animationDuration: "7s" }}
-          />
-        </motion.div>
+        {!lite && (
+          <>
+            <motion.div
+              style={reduced ? undefined : { x: slowX, y: slowY }}
+              className="absolute -left-24 -top-20"
+            >
+              <div
+                className="h-72 w-72 animate-float rounded-full bg-blue-400/30 blur-2xl motion-reduce:animate-none sm:h-96 sm:w-96 dark:bg-blue-600/20"
+                style={{ animationDelay: "0s", animationDuration: "7s" }}
+              />
+            </motion.div>
 
-        <motion.div
-          style={reduced ? undefined : { x: midX, y: midY }}
-          className="absolute -right-24 top-1/4"
-        >
-          <div
-            className="h-80 w-80 animate-float rounded-full bg-blue-500/25 blur-3xl motion-reduce:animate-none dark:bg-blue-500/15"
-            style={{ animationDelay: "1.6s", animationDuration: "8s" }}
-          />
-        </motion.div>
+            <motion.div
+              style={reduced ? undefined : { x: midX, y: midY }}
+              className="absolute -right-24 top-1/4"
+            >
+              <div
+                className="h-80 w-80 animate-float rounded-full bg-blue-500/25 blur-2xl motion-reduce:animate-none dark:bg-blue-500/15"
+                style={{ animationDelay: "1.6s", animationDuration: "8s" }}
+              />
+            </motion.div>
 
-        <motion.div
-          style={reduced ? undefined : { x: fastX, y: fastY }}
-          className="absolute -bottom-28 left-1/3"
-        >
-          <div
-            className="h-80 w-80 animate-float rounded-full bg-blue-600/20 blur-3xl motion-reduce:animate-none sm:h-[26rem] sm:w-[26rem] dark:bg-blue-700/20"
-            style={{ animationDelay: "3s", animationDuration: "9s" }}
-          />
-        </motion.div>
+            <motion.div
+              style={reduced ? undefined : { x: fastX, y: fastY }}
+              className="absolute -bottom-28 left-1/3"
+            >
+              <div
+                className="h-80 w-80 animate-float rounded-full bg-blue-600/20 blur-2xl motion-reduce:animate-none sm:h-[26rem] sm:w-[26rem] dark:bg-blue-700/20"
+                style={{ animationDelay: "3s", animationDuration: "9s" }}
+              />
+            </motion.div>
+          </>
+        )}
 
         <div className="absolute inset-0 grid-bg opacity-70 dark:opacity-40" />
         <div className="absolute inset-0">
@@ -354,11 +411,13 @@ export default function Hero() {
               : { opacity: 0, scale: reduced ? 1 : 0.96 }
           }
           transition={{ duration: reduced ? 0.15 : 0.5, ease: "easeOut" }}
-          style={reduced ? undefined : { x: avatarX, y: avatarY }}
+          style={reduced || lite ? undefined : { x: avatarX, y: avatarY }}
           className="order-1 relative mx-auto mt-2 h-60 w-60 sm:h-72 sm:w-72 lg:order-2 lg:mt-0 lg:h-[21rem] lg:w-[21rem]"
         >
-          <div className="absolute -inset-12 rounded-full bg-blue-500/20 blur-3xl dark:bg-blue-500/10" />
-          <div className="absolute -inset-[10px] animate-spin-slow rounded-full bg-[conic-gradient(from_0deg,#1e3a8a,#2563eb,#bfdbfe,#1e40af,#1e3a8a)] blur-[1px] motion-reduce:animate-none" />
+          <div className="absolute -inset-12 rounded-full bg-blue-500/20 blur-2xl dark:bg-blue-500/10" />
+          {!lite && (
+            <div className="absolute -inset-[10px] animate-spin-slow rounded-full bg-[conic-gradient(from_0deg,#1e3a8a,#2563eb,#bfdbfe,#1e40af,#1e3a8a)] blur-[1px] motion-reduce:animate-none" />
+          )}
           <div className="absolute -inset-[5px] rounded-full bg-[#fafafa] dark:bg-[#09090b]" />
 
           <div className="relative z-10 h-full w-full">
@@ -372,6 +431,7 @@ export default function Hero() {
                 fill
                 sizes="(max-width: 640px) 15rem, (max-width: 1024px) 18rem, 21rem"
                 className="object-cover"
+                quality={70}
                 preload
               />
             </TiltCard>
@@ -380,11 +440,11 @@ export default function Hero() {
           {floatingChips.map((chip) => (
             <motion.div
               key={chip.label}
-              style={reduced ? undefined : { x: chipX, y: chipY }}
+              style={reduced || lite ? undefined : { x: chipX, y: chipY }}
               className={`absolute z-20 ${chip.position}`}
             >
               <div
-                className="animate-float rounded-full border border-blue-200/80 bg-white/80 px-3 py-1.5 font-mono text-[10px] font-medium text-blue-800 shadow-sm shadow-blue-900/5 backdrop-blur-sm motion-reduce:animate-none sm:text-xs dark:border-blue-400/20 dark:bg-zinc-900/70 dark:text-blue-200"
+                className="animate-float rounded-full border border-blue-200/80 bg-white/85 px-3 py-1.5 font-mono text-[10px] font-medium text-blue-800 shadow-sm shadow-blue-900/5 motion-reduce:animate-none sm:text-xs dark:border-blue-400/20 dark:bg-zinc-900/80 dark:text-blue-200"
                 style={{ animationDelay: chip.delay, animationDuration: chip.duration }}
               >
                 {chip.label}
@@ -402,7 +462,7 @@ export default function Hero() {
           <motion.span
             className="h-1.5 w-1 rounded-full bg-blue-700 dark:bg-blue-300"
             animate={
-              !splashReady || reduced
+              !splashReady || !heroInView || reduced
                 ? undefined
                 : { y: [0, 9, 0], opacity: [1, 0.35, 1] }
             }

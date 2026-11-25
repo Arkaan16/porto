@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";
+import { usePerformanceMode } from "./usePerformanceMode";
 
 type RevealVariant = "fade-up" | "fade-left" | "fade-right" | "zoom" | "blur-in";
 
@@ -31,9 +32,14 @@ const variants: Record<RevealVariant, Variants> = {
     visible: { opacity: 1, scale: 1 },
   },
   "blur-in": {
-    hidden: { opacity: 0, y: 18, filter: "blur(12px)" },
-    visible: { opacity: 1, y: 0, filter: "blur(0px)" },
+    hidden: { opacity: 0, y: 18 },
+    visible: { opacity: 1, y: 0 },
   },
+};
+
+const liteVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
 };
 
 export default function Reveal({
@@ -44,6 +50,7 @@ export default function Reveal({
   once = true,
 }: RevealProps) {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
 
   if (reduced) {
     return <div className={className}>{children}</div>;
@@ -54,9 +61,9 @@ export default function Reveal({
       className={className}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once, amount: 0.25 }}
-      variants={variants[variant]}
-      transition={{ duration: 0.55, delay, ease: "easeOut" }}
+      viewport={{ once, margin: "-80px", amount: 0.2 }}
+      variants={lite ? liteVariants : variants[variant]}
+      transition={{ duration: lite ? 0.3 : 0.55, delay: lite ? 0 : delay, ease: "easeOut" }}
     >
       {children}
     </motion.div>

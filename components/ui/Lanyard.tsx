@@ -12,12 +12,14 @@ import {
   motion,
   useMotionTemplate,
   useMotionValue,
+  useInView,
   useMotionValueEvent,
   useReducedMotion,
   useSpring,
   useTransform,
 } from "framer-motion";
 import Image from "next/image";
+import { usePerformanceMode } from "./usePerformanceMode";
 
 const ROPE_LENGTH = 128;
 const ANCHOR_Y = 22;
@@ -47,6 +49,7 @@ export default function Lanyard({
   className = "",
 }: LanyardProps) {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
   const rawId = useId();
   const uid = rawId.replace(/[^a-zA-Z0-9_-]/g, "");
   const gradientId = `lanyard-gradient-${uid}`;
@@ -55,6 +58,7 @@ export default function Lanyard({
   const pathId = `lanyard-path-${uid}`;
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(containerRef, { amount: 0.15 });
   const pathRef = useRef<SVGPathElement>(null);
   const centerXRef = useRef(0);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -124,7 +128,7 @@ export default function Lanyard({
   }, [dragging, x, y, dragRotation]);
 
   useEffect(() => {
-    if (reduced) {
+    if (reduced || lite || !inView) {
       idleSwing.set(0);
       dragRotation.set(0);
       return;
@@ -140,10 +144,10 @@ export default function Lanyard({
     });
 
     return () => controls.stop();
-  }, [reduced, dragging, idleSwing, dragRotation]);
+  }, [inView, lite, reduced, dragging, idleSwing, dragRotation]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (reduced) return;
+    if (reduced || lite) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (event.pointerType === "mouse") event.preventDefault();
 
@@ -162,20 +166,41 @@ export default function Lanyard({
     setDragging(true);
   };
 
+  const tiltFrameRef = useRef<number | null>(null);
+  const tiltPendingRef = useRef({ nx: 0.5, ny: 0.5 });
+
+  useEffect(
+    () => () => {
+      if (tiltFrameRef.current !== null) cancelAnimationFrame(tiltFrameRef.current);
+    },
+    [],
+  );
+
   const handleTiltMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (reduced || dragging) return;
+    if (reduced || lite || dragging || event.pointerType === "touch") return;
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const nx = (event.clientX - rect.left) / rect.width;
-    const ny = (event.clientY - rect.top) / rect.height;
+    tiltPendingRef.current = {
+      nx: (event.clientX - rect.left) / rect.width,
+      ny: (event.clientY - rect.top) / rect.height,
+    };
 
-    tiltY.set((nx - 0.5) * 10);
-    tiltX.set((0.5 - ny) * 8);
-    glareX.set(nx * 100);
-    glareY.set(ny * 100);
+    if (tiltFrameRef.current !== null) return;
+    tiltFrameRef.current = requestAnimationFrame(() => {
+      tiltFrameRef.current = null;
+      const { nx, ny } = tiltPendingRef.current;
+      tiltY.set((nx - 0.5) * 10);
+      tiltX.set((0.5 - ny) * 8);
+      glareX.set(nx * 100);
+      glareY.set(ny * 100);
+    });
   };
 
   const resetTilt = () => {
+    if (tiltFrameRef.current !== null) {
+      cancelAnimationFrame(tiltFrameRef.current);
+      tiltFrameRef.current = null;
+    }
     tiltX.set(0);
     tiltY.set(0);
     glareX.set(50);
@@ -346,7 +371,7 @@ export default function Lanyard({
                   onPointerMove={handleTiltMove}
                   onPointerLeave={resetTilt}
                   style={
-                    reduced
+                    reduced || lite
                       ? undefined
                       : {
                           rotateX: springTiltX,
@@ -358,7 +383,7 @@ export default function Lanyard({
                     dragging ? "cursor-grabbing" : "cursor-grab"
                   }`}
                 >
-                  <div className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/85 p-3 shadow-[0_28px_65px_-24px_rgba(15,23,42,0.6)] backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/85">
+                  <div className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/90 p-3 shadow-[0_28px_65px_-24px_rgba(15,23,42,0.6)] dark:border-white/10 dark:bg-zinc-900/90">
                     <div className="absolute left-1/2 top-2.5 h-2 w-12 -translate-x-1/2 rounded-full bg-zinc-900/80 dark:bg-zinc-100/80">
                       <div className="absolute inset-[2px] rounded-full bg-zinc-700/50 dark:bg-zinc-400/50" />
                     </div>
@@ -397,7 +422,7 @@ export default function Lanyard({
                         <span className="font-mono text-[9px] tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
                           {idText}
                         </span>
-                        <span className="relative h-4 w-14 overflow-hidden rounded-sm bg-[linear-gradient(110deg,#1e3a8a,#60a5fa,#bfdbfe,#2563eb,#1e3a8a)] bg-[length:250%_100%] animate-shimmer motion-reduce:animate-none">
+                        <span className={`relative h-4 w-14 overflow-hidden rounded-sm bg-[linear-gradient(110deg,#1e3a8a,#60a5fa,#bfdbfe,#2563eb,#1e3a8a)] bg-[length:250%_100%] motion-reduce:animate-none ${lite ? "" : "animate-shimmer"}`}>
                           <span className="absolute inset-0 flex items-center justify-center font-mono text-[6px] font-bold tracking-[0.2em] text-white/80">
                             SECURE
                           </span>
@@ -405,7 +430,7 @@ export default function Lanyard({
                       </div>
                     </div>
 
-                    {!reduced && (
+                    {!reduced && !lite && (
                       <motion.div
                         aria-hidden
                         className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"

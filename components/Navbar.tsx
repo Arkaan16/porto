@@ -16,6 +16,7 @@ import {
 } from "framer-motion";
 import { contactEmail, navLinks } from "@/data/profile";
 import ThemeToggle from "./ThemeToggle";
+import { usePerformanceMode } from "./ui/usePerformanceMode";
 
 const sectionIds = navLinks.map((link) => link.href.replace("#", ""));
 
@@ -42,21 +43,43 @@ const menuItemVariants = {
 
 function MagneticCTA({ className = "" }: { className?: string }) {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
   const ref = useRef<HTMLAnchorElement>(null);
   const pointerX = useMotionValue(0);
   const pointerY = useMotionValue(0);
-  const x = useSpring(pointerX, { stiffness: 220, damping: 16 });
-  const y = useSpring(pointerY, { stiffness: 220, damping: 16 });
+  const x = useSpring(pointerX, { stiffness: 220, damping: 22 });
+  const y = useSpring(pointerY, { stiffness: 220, damping: 22 });
+  const frameRef = useRef<number | null>(null);
+  const pendingRef = useRef({ x: 0, y: 0 });
+
+  useEffect(
+    () => () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    },
+    [],
+  );
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLAnchorElement>) => {
-    if (reduced || event.pointerType === "touch") return;
+    if (reduced || lite || event.pointerType === "touch") return;
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
-    pointerX.set((event.clientX - (rect.left + rect.width / 2)) * 0.18);
-    pointerY.set((event.clientY - (rect.top + rect.height / 2)) * 0.28);
+    pendingRef.current = {
+      x: (event.clientX - (rect.left + rect.width / 2)) * 0.18,
+      y: (event.clientY - (rect.top + rect.height / 2)) * 0.28,
+    };
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      pointerX.set(pendingRef.current.x);
+      pointerY.set(pendingRef.current.y);
+    });
   };
 
   const reset = () => {
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
     pointerX.set(0);
     pointerY.set(0);
   };
@@ -67,14 +90,14 @@ function MagneticCTA({ className = "" }: { className?: string }) {
       href={`mailto:${contactEmail}`}
       onPointerMove={handlePointerMove}
       onPointerLeave={reset}
-      style={reduced ? undefined : { x, y }}
+      style={reduced || lite ? undefined : { x, y }}
       whileTap={reduced ? undefined : { scale: 0.96 }}
       className={`relative inline-flex items-center justify-center overflow-hidden rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 ${className}`}
     >
       <span className="relative z-10 whitespace-nowrap">Let&apos;s Talk</span>
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 animate-shimmer bg-[linear-gradient(110deg,transparent_35%,rgba(255,255,255,0.45)_50%,transparent_65%)] bg-[length:250%_100%] opacity-70 motion-reduce:animate-none"
+        className={`pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(110deg,transparent_35%,rgba(255,255,255,0.45)_50%,transparent_65%)] bg-[length:250%_100%] opacity-70 motion-reduce:animate-none ${lite ? "" : "animate-shimmer"}`}
       />
     </motion.a>
   );
@@ -123,7 +146,7 @@ export default function Navbar() {
       <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
         <nav
           aria-label="Primary"
-          className="glass pointer-events-auto relative z-50 flex w-full max-w-3xl items-center justify-between gap-2 rounded-full px-3 py-2 shadow-lg shadow-blue-950/5 sm:px-4 dark:shadow-black/40"
+          className="glass-blur pointer-events-auto relative z-50 flex w-full max-w-3xl items-center justify-between gap-2 rounded-full px-3 py-2 shadow-lg shadow-blue-950/5 sm:px-4 dark:shadow-black/40"
         >
           <a
             href="#hero"
@@ -232,7 +255,7 @@ export default function Navbar() {
                 exit={reduced ? undefined : "exit"}
                 className="fixed inset-x-4 top-[5.25rem] z-40 md:hidden"
               >
-                <div className="glass overflow-hidden rounded-3xl p-3 shadow-2xl shadow-blue-950/10 dark:shadow-black/50">
+                <div className="glass-blur overflow-hidden rounded-3xl p-3 shadow-2xl shadow-blue-950/10 dark:shadow-black/50">
                   <div className="flex flex-col">
                     {navLinks.map((link) => {
                       const isActive = activeSection === link.href.replace("#", "");

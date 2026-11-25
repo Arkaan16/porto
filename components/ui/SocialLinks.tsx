@@ -35,11 +35,11 @@ export default function SocialLinks({
           whileHover={reduced ? undefined : { y: -4 }}
           whileTap={reduced ? undefined : { scale: 0.95 }}
           transition={{ type: "spring", stiffness: 320, damping: 20 }}
-          className={`group relative inline-flex ${boxClass} items-center justify-center rounded-full border backdrop-blur-sm transition-colors ${linkClass}`}
+          className={`group relative inline-flex ${boxClass} items-center justify-center rounded-full border transition-colors ${linkClass}`}
         >
           <span
             aria-hidden
-            className={`absolute inset-0 rounded-full blur-md transition-colors ${
+            className={`absolute inset-0 rounded-full blur-sm transition-colors ${
               onDark ? "bg-white/0 group-hover:bg-white/15" : "bg-blue-500/0 group-hover:bg-blue-500/20"
             }`}
           />

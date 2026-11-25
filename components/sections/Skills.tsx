@@ -20,6 +20,8 @@ import { hardSkills, softSkills, tools } from "@/data/profile";
 import Marquee from "@/components/ui/Marquee";
 import Reveal from "@/components/ui/Reveal";
 import SectionHeading from "@/components/ui/SectionHeading";
+import { useInViewPause } from "@/components/ui/useInView";
+import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
 
 type Tool = (typeof tools)[number];
 
@@ -178,7 +180,7 @@ function SkillRing({
         ref={ref}
         whileHover={reduced ? undefined : { y: -6 }}
         transition={{ type: "spring", stiffness: 280, damping: 22 }}
-        className="glass group/skill relative flex h-full min-h-[13rem] flex-col items-center justify-center overflow-hidden rounded-3xl p-5 text-center shadow-sm transition-shadow duration-500 hover:shadow-2xl hover:shadow-blue-900/10 dark:hover:shadow-blue-500/10"
+        className="glass group/skill relative flex h-full min-h-[13rem] flex-col items-center justify-center overflow-hidden rounded-3xl p-5 text-center shadow-sm transition-transform duration-300"
       >
         <div
           aria-hidden
@@ -280,34 +282,68 @@ function ToolGlyph({ tool }: { tool: Tool }) {
 
 function ToolCard({ tool }: { tool: Tool }) {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
+  const finePointerRef = useRef(false);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useMotionValue(0);
   const rotateY = useMotionValue(0);
-  const springX = useSpring(x, { stiffness: 240, damping: 18 });
-  const springY = useSpring(y, { stiffness: 240, damping: 18 });
-  const springRotateX = useSpring(rotateX, { stiffness: 220, damping: 18 });
-  const springRotateY = useSpring(rotateY, { stiffness: 220, damping: 18 });
+  const springX = useSpring(x, { stiffness: 200, damping: 24 });
+  const springY = useSpring(y, { stiffness: 200, damping: 24 });
+  const springRotateX = useSpring(rotateX, { stiffness: 200, damping: 24 });
+  const springRotateY = useSpring(rotateY, { stiffness: 200, damping: 24 });
+
+  const frameRef = useRef<number | null>(null);
+  const pendingRef = useRef({ px: 0, py: 0 });
+
+  useEffect(() => {
+    const query = window.matchMedia("(hover: hover) and (pointer: fine)");
+    finePointerRef.current = query.matches;
+    const onChange = () => {
+      finePointerRef.current = query.matches;
+    };
+    query.addEventListener("change", onChange);
+
+    return () => {
+      query.removeEventListener("change", onChange);
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (reduced || event.pointerType === "touch") return;
+    if (reduced || lite || !finePointerRef.current || event.pointerType === "touch") {
+      return;
+    }
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const px = (event.clientX - rect.left) / rect.width - 0.5;
-    const py = (event.clientY - rect.top) / rect.height - 0.5;
+    pendingRef.current = {
+      px: (event.clientX - rect.left) / rect.width - 0.5,
+      py: (event.clientY - rect.top) / rect.height - 0.5,
+    };
 
-    x.set(px * 12);
-    y.set(py * 12);
-    rotateY.set(px * 10);
-    rotateX.set(-py * 10);
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      const { px, py } = pendingRef.current;
+      x.set(px * 12);
+      y.set(py * 12);
+      rotateY.set(px * 10);
+      rotateX.set(-py * 10);
+    });
   };
 
   const reset = () => {
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
     x.set(0);
     y.set(0);
     rotateX.set(0);
     rotateY.set(0);
   };
+
+  const disabled = reduced || lite;
 
   return (
     <div className="shrink-0 [perspective:800px]">
@@ -315,7 +351,7 @@ function ToolCard({ tool }: { tool: Tool }) {
         onPointerMove={handlePointerMove}
         onPointerLeave={reset}
         style={
-          reduced
+          disabled
             ? undefined
             : {
                 x: springX,
@@ -325,7 +361,7 @@ function ToolCard({ tool }: { tool: Tool }) {
                 transformStyle: "preserve-3d" as const,
               }
         }
-        className="glass group/tool flex w-40 shrink-0 items-center gap-3 rounded-2xl px-4 py-3 shadow-sm transition-all duration-300 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-900/10 sm:w-44 dark:hover:border-blue-500/40 dark:hover:shadow-blue-500/10"
+        className="glass group/tool flex w-40 shrink-0 items-center gap-3 rounded-2xl px-4 py-3 shadow-sm transition-colors duration-300 hover:border-blue-300 sm:w-44 dark:hover:border-blue-500/40"
       >
         <ToolGlyph tool={tool} />
         <span className="text-xs font-semibold leading-tight text-zinc-700 dark:text-zinc-200">
@@ -337,11 +373,15 @@ function ToolCard({ tool }: { tool: Tool }) {
 }
 
 function ToolOrbit() {
+  const { lite } = usePerformanceMode();
+
+  if (lite) return null;
+
   return (
     <div className="pointer-events-none absolute -right-40 top-10 hidden h-[34rem] w-[34rem] lg:block">
       <div className="absolute inset-0 rounded-full border border-blue-200/50 dark:border-blue-400/10" />
       <div className="absolute inset-16 rounded-full border border-dashed border-blue-300/50 dark:border-blue-400/10" />
-      <div className="absolute inset-32 rounded-full bg-gradient-to-br from-blue-400/20 to-blue-700/10 blur-2xl" />
+      <div className="absolute inset-32 rounded-full bg-gradient-to-br from-blue-400/20 to-blue-700/10 blur-xl" />
       <div className="absolute inset-0 animate-spin-slow motion-reduce:animate-none">
         {tools.slice(0, 6).map((tool, index) => (
           <div
@@ -366,8 +406,14 @@ function ToolOrbit() {
 }
 
 export default function Skills() {
+  const sectionRef = useInViewPause<HTMLElement>();
+
   return (
-    <section id="skills" className="relative isolate overflow-hidden px-4 py-24">
+    <section
+      id="skills"
+      ref={sectionRef}
+      className="cv-auto relative isolate overflow-hidden px-4 py-24"
+    >
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-zinc-50 to-white dark:from-[#0b1220] dark:via-zinc-950 dark:to-[#081426]" />
         <div

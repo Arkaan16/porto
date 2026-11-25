@@ -23,6 +23,8 @@ import { designProjects, projects } from "@/data/profile";
 import Reveal from "@/components/ui/Reveal";
 import SectionHeading from "@/components/ui/SectionHeading";
 import TiltCard from "@/components/ui/TiltCard";
+import { useInViewPause } from "@/components/ui/useInView";
+import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
 
 type TabKey = "web" | "design";
 type Project = (typeof projects)[number];
@@ -207,6 +209,8 @@ function WebProjectCard({
           alt={project.title}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          quality={70}
+          loading="lazy"
           className="object-cover transition-transform duration-700 ease-out group-hover/card:scale-110"
         />
 
@@ -230,7 +234,7 @@ function WebProjectCard({
             {project.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-[9px] font-medium text-white/80 backdrop-blur-sm"
+                className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-[9px] font-medium text-white/80"
               >
                 {tag}
               </span>
@@ -248,7 +252,7 @@ function WebProjectCard({
             <button
               type="button"
               onClick={(event) => onDetail(project, event.currentTarget)}
-              className="group/detail inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              className="group/detail inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
             >
               <span>Detail</span>
               <ActionIcon
@@ -261,7 +265,7 @@ function WebProjectCard({
                 href={project.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group/source inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                className="group/source inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
               >
                 <span>Source</span>
                 <ActionIcon
@@ -305,30 +309,18 @@ function ProjectDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        initial={
-          reduced
-            ? { opacity: 0 }
-            : { opacity: 0, scale: 0.96, y: 18, filter: "blur(10px)" }
-        }
-        animate={
-          reduced
-            ? { opacity: 1 }
-            : { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }
-        }
-        exit={
-          reduced
-            ? { opacity: 0 }
-            : { opacity: 0, scale: 0.98, y: 10, filter: "blur(6px)" }
-        }
+        initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 18 }}
+        animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+        exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: 10 }}
         transition={{ duration: reduced ? 0 : 0.35, ease: "easeOut" }}
         onClick={(event) => event.stopPropagation()}
-        className="glass relative my-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-zinc-200/80 shadow-2xl outline-none dark:border-zinc-700/70"
+        className="glass-blur relative my-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-zinc-200/80 shadow-2xl outline-none dark:border-zinc-700/70"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close project details"
-          className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-zinc-950/40 text-white backdrop-blur-sm transition-colors hover:bg-zinc-950/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+          className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-zinc-950/60 text-white transition-colors hover:bg-zinc-950/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
         >
           <ActionIcon name="close" className="h-4 w-4" />
         </button>
@@ -339,6 +331,7 @@ function ProjectDialog({
             alt={project.title}
             fill
             sizes="(max-width: 768px) 100vw, 48rem"
+            quality={70}
             className="object-cover"
           />
           <span
@@ -434,8 +427,10 @@ function DesignGallery({
                 alt={item.title}
                 width={item.width}
                 height={item.height}
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                className="h-auto w-full transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              quality={70}
+              loading="lazy"
+              className="h-auto w-full transition-transform duration-700 ease-out group-hover:scale-[1.06]"
               />
             </motion.div>
           </button>
@@ -494,7 +489,7 @@ function DesignLightbox({
           exit={{ opacity: 0 }}
           transition={{ duration: reduced ? 0 : 0.25 }}
           onClick={onClose}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/90 p-4 outline-none backdrop-blur-xl sm:p-8"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/90 p-4 outline-none backdrop-blur-md sm:p-8"
         >
           <div
             onClick={(event) => event.stopPropagation()}
@@ -508,7 +503,7 @@ function DesignLightbox({
               type="button"
               onClick={onClose}
               aria-label="Close design preview"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
             >
               <ActionIcon name="close" className="h-4 w-4" />
             </button>
@@ -532,6 +527,8 @@ function DesignLightbox({
               width={item.width}
               height={item.height}
               sizes="(max-width: 768px) 100vw, 90vw"
+              quality={70}
+              loading="eager"
               className="mx-auto h-auto max-h-[76vh] w-full object-contain"
             />
           </motion.div>
@@ -544,7 +541,7 @@ function DesignLightbox({
               type="button"
               onClick={onPrev}
               aria-label="Previous design"
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
             >
               <ActionIcon name="left" className="h-5 w-5" />
             </button>
@@ -552,7 +549,7 @@ function DesignLightbox({
               type="button"
               onClick={onNext}
               aria-label="Next design"
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
             >
               <ActionIcon name="right" className="h-5 w-5" />
             </button>
@@ -565,6 +562,8 @@ function DesignLightbox({
 
 export default function Projects() {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
+  const sectionRef = useInViewPause<HTMLElement>();
   const detailTitleId = useId();
   const detailDialogRef = useRef<HTMLDivElement>(null);
   const lightboxDialogRef = useRef<HTMLDivElement>(null);
@@ -648,7 +647,7 @@ export default function Projects() {
 
   return (
     <LayoutGroup>
-      <section id="projects" className="relative isolate overflow-hidden px-4 py-24">
+      <section id="projects" ref={sectionRef} className="cv-auto relative isolate overflow-hidden px-4 py-24">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -668,14 +667,18 @@ export default function Projects() {
                 "radial-gradient(circle at 12% 18%, rgba(37,99,235,0.24), transparent 42%), radial-gradient(circle at 88% 28%, rgba(59,130,246,0.18), transparent 46%), radial-gradient(circle at 50% 90%, rgba(30,64,175,0.24), transparent 50%)",
             }}
           />
-          <div
-            className="absolute -left-28 top-20 h-72 w-72 animate-float rounded-full bg-blue-400/25 blur-3xl motion-reduce:animate-none dark:bg-blue-600/15"
-            style={{ animationDelay: "1s", animationDuration: "10s" }}
-          />
-          <div
-            className="absolute -right-24 bottom-24 h-80 w-80 animate-float rounded-full bg-blue-500/20 blur-3xl motion-reduce:animate-none dark:bg-blue-700/15"
-            style={{ animationDelay: "3s", animationDuration: "11s" }}
-          />
+          {!lite && (
+            <>
+              <div
+                className="absolute -left-28 top-20 h-72 w-72 animate-float rounded-full bg-blue-400/25 blur-2xl motion-reduce:animate-none dark:bg-blue-600/15"
+                style={{ animationDelay: "1s", animationDuration: "10s" }}
+              />
+              <div
+                className="absolute -right-24 bottom-24 h-80 w-80 animate-float rounded-full bg-blue-500/20 blur-2xl motion-reduce:animate-none dark:bg-blue-700/15"
+                style={{ animationDelay: "3s", animationDuration: "11s" }}
+              />
+            </>
+          )}
           <div className="absolute inset-0 blue-dots opacity-60 dark:opacity-40" />
           <div className="absolute inset-0 grid-bg opacity-15 dark:opacity-10" />
           <div className="absolute inset-0">
@@ -770,25 +773,26 @@ export default function Projects() {
           </AnimatePresence>
         </div>
 
-        <AnimatePresence>
-          {selectedProject && (
-            <ProjectDialog
-              project={selectedProject}
-              titleId={detailTitleId}
-              dialogRef={detailDialogRef}
-              onClose={closeDetail}
-            />
-          )}
-        </AnimatePresence>
-
-        <DesignLightbox
-          index={lightboxIndex}
-          dialogRef={lightboxDialogRef}
-          onClose={closeLightbox}
-          onPrev={showPrev}
-          onNext={showNext}
-        />
       </section>
+
+      <AnimatePresence>
+        {selectedProject && (
+          <ProjectDialog
+            project={selectedProject}
+            titleId={detailTitleId}
+            dialogRef={detailDialogRef}
+            onClose={closeDetail}
+          />
+        )}
+      </AnimatePresence>
+
+      <DesignLightbox
+        index={lightboxIndex}
+        dialogRef={lightboxDialogRef}
+        onClose={closeLightbox}
+        onPrev={showPrev}
+        onNext={showNext}
+      />
     </LayoutGroup>
   );
 }

@@ -51,7 +51,7 @@ export default function SectionHeading({
     <motion.div
       initial={reduced ? "visible" : "hidden"}
       whileInView="visible"
-      viewport={{ once: true, amount: 0.4 }}
+      viewport={{ once: true, amount: 0.3, margin: "-80px" }}
       variants={container}
       className={`${isCenter ? "text-center mx-auto items-center" : "text-left items-start"} flex flex-col ${className}`}
     >

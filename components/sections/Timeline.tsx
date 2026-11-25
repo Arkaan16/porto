@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  useEffect,
-  useId,
   useRef,
   useState,
   type KeyboardEvent,
@@ -10,10 +8,8 @@ import {
 } from "react";
 import {
   AnimatePresence,
-  animate,
   motion,
   useInView,
-  useMotionValue,
   useReducedMotion,
   useScroll,
   useSpring,
@@ -25,6 +21,8 @@ import { education, experience, organizations } from "@/data/profile";
 import Reveal from "@/components/ui/Reveal";
 import SectionHeading from "@/components/ui/SectionHeading";
 import TiltCard from "@/components/ui/TiltCard";
+import { useInViewPause } from "@/components/ui/useInView";
+import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
 
 type TabKey = "education" | "organization" | "experience";
 
@@ -130,97 +128,6 @@ function TypeIcon({ type }: { type: TabKey }) {
       <path d="M3 12.5h18" />
       <path d="M10 12.5V14h4v-1.5" />
     </SvgIcon>
-  );
-}
-
-const COLLAPSED_HEIGHT = 92;
-
-function ExpandableDescription({
-  text,
-  collapsible,
-}: {
-  text: string;
-  collapsible: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const reduced = useReducedMotion();
-  const contentId = useId();
-  const contentRef = useRef<HTMLDivElement>(null);
-  const height = useMotionValue(COLLAPSED_HEIGHT);
-  const canCollapse = collapsible && text.length > 200;
-
-  useEffect(() => {
-    if (!canCollapse) return;
-
-    const node = contentRef.current;
-    if (!node) return;
-
-    const controls = animate(
-      height,
-      expanded ? node.scrollHeight : COLLAPSED_HEIGHT,
-      {
-        duration: reduced ? 0 : 0.55,
-        ease: [0.22, 1, 0.36, 1] as const,
-      },
-    );
-
-    return () => controls.stop();
-  }, [canCollapse, expanded, height, reduced]);
-
-  if (!canCollapse) {
-    return (
-      <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-        {text}
-      </p>
-    );
-  }
-
-  return (
-    <div>
-      <motion.div
-        id={contentId}
-        style={{ height, willChange: "height" }}
-        className="relative overflow-hidden"
-      >
-        <div ref={contentRef}>
-          <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-            {text}
-          </p>
-        </div>
-
-        <motion.div
-          aria-hidden
-          initial={false}
-          animate={{ opacity: expanded ? 0 : 1 }}
-          transition={{ duration: reduced ? 0 : 0.3, ease: "easeOut" }}
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white/95 via-white/65 to-transparent dark:from-zinc-900/95 dark:via-zinc-900/65"
-        />
-      </motion.div>
-
-      <button
-        type="button"
-        onClick={() => setExpanded((current) => !current)}
-        aria-expanded={expanded}
-        aria-controls={contentId}
-        className="mt-3 inline-flex items-center gap-1.5 rounded-full font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-700 transition-colors hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200"
-      >
-        {expanded ? "Read less" : "Read more"}
-        <svg
-          aria-hidden
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`h-3 w-3 transition-transform duration-300 ${
-            expanded ? "rotate-180" : ""
-          }`}
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
-    </div>
   );
 }
 
@@ -335,12 +242,9 @@ function TimelineEntry({
             )}
 
             {item.description && (
-              <div className="mt-4">
-                <ExpandableDescription
-                  text={item.description}
-                  collapsible={type === "experience"}
-                />
-              </div>
+              <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                {item.description}
+              </p>
             )}
           </TiltCard>
         </Reveal>
@@ -351,6 +255,8 @@ function TimelineEntry({
 
 export default function Timeline() {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
+  const sectionRef = useInViewPause<HTMLElement>();
   const timelineRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: timelineRef,
@@ -396,7 +302,8 @@ export default function Timeline() {
   return (
     <section
       id="timeline"
-      className="relative isolate overflow-hidden px-4 py-24"
+      ref={sectionRef}
+      className="cv-auto relative isolate overflow-hidden px-4 py-24"
     >
       <div
         aria-hidden
@@ -419,18 +326,22 @@ export default function Timeline() {
           }}
         />
 
-        <div
-          className="absolute -left-24 top-16 h-80 w-80 animate-float rounded-full bg-blue-400/25 blur-3xl motion-reduce:animate-none dark:bg-blue-600/15"
-          style={{ animationDelay: "0s", animationDuration: "9s" }}
-        />
-        <div
-          className="absolute -right-20 top-1/3 h-96 w-96 animate-float rounded-full bg-blue-500/20 blur-3xl motion-reduce:animate-none dark:bg-blue-500/10"
-          style={{ animationDelay: "2.2s", animationDuration: "11s" }}
-        />
-        <div
-          className="absolute -bottom-24 left-1/3 h-80 w-80 animate-float rounded-full bg-blue-300/20 blur-3xl motion-reduce:animate-none dark:bg-blue-700/15"
-          style={{ animationDelay: "4s", animationDuration: "10s" }}
-        />
+        {!lite && (
+          <>
+            <div
+              className="absolute -left-24 top-16 h-80 w-80 animate-float rounded-full bg-blue-400/25 blur-2xl motion-reduce:animate-none dark:bg-blue-600/15"
+              style={{ animationDelay: "0s", animationDuration: "9s" }}
+            />
+            <div
+              className="absolute -right-20 top-1/3 h-96 w-96 animate-float rounded-full bg-blue-500/20 blur-2xl motion-reduce:animate-none dark:bg-blue-500/10"
+              style={{ animationDelay: "2.2s", animationDuration: "11s" }}
+            />
+            <div
+              className="absolute -bottom-24 left-1/3 h-80 w-80 animate-float rounded-full bg-blue-300/20 blur-2xl motion-reduce:animate-none dark:bg-blue-700/15"
+              style={{ animationDelay: "4s", animationDuration: "10s" }}
+            />
+          </>
+        )}
 
         <div className="absolute inset-0 blue-dots opacity-70 dark:opacity-50" />
         <div className="absolute inset-0 grid-bg opacity-15 dark:opacity-10" />

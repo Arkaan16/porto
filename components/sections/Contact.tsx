@@ -6,6 +6,8 @@ import { contactEmail, profile } from "@/data/profile";
 import { Icon } from "@/components/ui/Icon";
 import Reveal from "@/components/ui/Reveal";
 import SocialLinks from "@/components/ui/SocialLinks";
+import { useInViewPause } from "@/components/ui/useInView";
+import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
 
 type CopyStatus = "idle" | "copied" | "error";
 type SendStatus = "idle" | "loading" | "success" | "error";
@@ -115,7 +117,7 @@ function EmailCard() {
       <div className="glass group relative h-full overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-blue-500/15 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
+          className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-blue-500/15 blur-xl transition-opacity duration-500 group-hover:opacity-100"
         />
         <div className="relative flex items-start gap-4">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
@@ -180,6 +182,8 @@ function EmailCard() {
 }
 
 function LocationCard() {
+  const { lite } = usePerformanceMode();
+
   return (
     <Reveal variant="zoom" delay={0.08} className="h-full">
       <div className="glass relative flex h-full min-h-[13rem] flex-col overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
@@ -214,7 +218,9 @@ function LocationCard() {
         </svg>
 
         <span className="absolute left-1/2 top-1/2 grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center">
-          <span className="absolute h-full w-full animate-ping rounded-full bg-blue-500/50" />
+          {!lite && (
+            <span className="absolute h-full w-full animate-ping rounded-full bg-blue-500/50" />
+          )}
           <span className="relative h-3 w-3 rounded-full bg-blue-700 ring-4 ring-white/70 dark:bg-blue-400 dark:ring-zinc-900/70" />
         </span>
 
@@ -259,6 +265,7 @@ function SocialCard() {
 
 function ContactForm() {
   const reduced = useReducedMotion();
+  const { lite } = usePerformanceMode();
   const [status, setStatus] = useState<SendStatus>("idle");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -298,7 +305,7 @@ function ContactForm() {
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-blue-500/15 blur-3xl"
+        className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-blue-500/15 blur-2xl"
       />
       <div className="relative flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -335,7 +342,7 @@ function ContactForm() {
       >
         <span
           aria-hidden
-          className="absolute inset-0 animate-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)] bg-[length:200%_100%]"
+          className={`absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)] bg-[length:200%_100%] ${lite ? "" : "animate-shimmer"}`}
         />
         <span className="relative z-10 flex items-center justify-center gap-2">
           {status === "loading" ? (
@@ -378,8 +385,14 @@ function ContactForm() {
 }
 
 export default function Contact() {
+  const sectionRef = useInViewPause<HTMLElement>();
+
   return (
-    <section id="contact" className="relative isolate overflow-hidden px-4 py-24">
+    <section
+      id="contact"
+      ref={sectionRef}
+      className="cv-auto relative isolate overflow-hidden px-4 py-24"
+    >
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-zinc-50 to-white dark:from-[#0b1220] dark:via-zinc-950 dark:to-[#081426]" />
         <div className="absolute inset-0 blue-dots opacity-50 dark:opacity-30" />
