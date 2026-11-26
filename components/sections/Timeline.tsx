@@ -1,28 +1,16 @@
 "use client";
 
-import {
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   AnimatePresence,
   motion,
-  useInView,
   useReducedMotion,
-  useScroll,
-  useSpring,
-  useTransform,
-  type MotionValue,
   type Variants,
 } from "framer-motion";
 import { education, experience, organizations } from "@/data/profile";
 import Reveal from "@/components/ui/Reveal";
 import SectionHeading from "@/components/ui/SectionHeading";
 import TiltCard from "@/components/ui/TiltCard";
-import { useInViewPause } from "@/components/ui/useInView";
-import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
 
 type TabKey = "education" | "organization" | "experience";
 
@@ -33,9 +21,9 @@ const tabs: { key: TabKey; label: string }[] = [
 ];
 
 const panelVariants: Variants = {
-  enter: (direction: number) => ({ opacity: 0, x: direction * 40 }),
-  center: { opacity: 1, x: 0 },
-  exit: (direction: number) => ({ opacity: 0, x: direction * -40 }),
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 interface TimelineEntryData {
@@ -44,6 +32,7 @@ interface TimelineEntryData {
   subtitle?: string;
   period: string;
   description?: string;
+  points?: string[];
   badge?: string;
 }
 
@@ -77,7 +66,7 @@ function buildEntries(tab: TabKey): TimelineEntryData[] {
     id: item.id,
     title: item.company,
     period: item.period.trim(),
-    description: item.description,
+    points: item.points,
     badge: item.role,
   }));
 }
@@ -135,31 +124,19 @@ interface TimelineEntryProps {
   item: TimelineEntryData;
   type: TabKey;
   index: number;
-  segmentCount: number;
   side: "left" | "right";
   isLast: boolean;
-  scrollYProgress: MotionValue<number>;
 }
 
 function TimelineEntry({
   item,
   type,
   index,
-  segmentCount,
   side,
   isLast,
-  scrollYProgress,
 }: TimelineEntryProps) {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { amount: 0.2 });
-  const reduced = useReducedMotion();
-  const start = index / segmentCount;
-  const end = (index + 1) / segmentCount;
-  const segmentProgress = useTransform(scrollYProgress, [start, end], [0, 1]);
-
   return (
     <article
-      ref={ref}
       className={`relative pl-12 md:grid md:grid-cols-2 md:gap-x-16 md:pl-0 lg:gap-x-20 ${
         isLast ? "pb-0" : "pb-10 md:pb-14"
       }`}
@@ -167,20 +144,13 @@ function TimelineEntry({
       {!isLast && (
         <div
           aria-hidden
-          className="absolute left-5 top-7 -bottom-7 w-0.5 -translate-x-1/2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800 md:left-1/2"
-        >
-          <motion.div
-            style={{ scaleY: reduced ? 1 : segmentProgress }}
-            className="h-full w-full origin-top bg-gradient-to-b from-blue-700 via-blue-500 to-blue-300 dark:from-blue-300 dark:via-blue-400 dark:to-blue-700"
-          />
-        </div>
+          className="absolute left-5 top-7 -bottom-7 w-0.5 -translate-x-1/2 rounded-full bg-gradient-to-b from-blue-700 via-blue-500 to-blue-300 dark:from-blue-300 dark:via-blue-400 dark:to-blue-700 md:left-1/2"
+        />
       )}
 
       <span
         aria-hidden
-        className={`absolute left-5 top-7 z-20 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full md:left-1/2 ${
-          inView ? "animate-pulse-glow motion-reduce:animate-none" : ""
-        }`}
+        className="absolute left-5 top-7 z-20 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full md:left-1/2"
       >
         <span className="absolute inset-1 rounded-full border border-blue-400/40 bg-blue-500/10 dark:border-blue-300/30 dark:bg-blue-400/10" />
         <span className="relative h-3.5 w-3.5 rounded-full border-2 border-white bg-blue-700 shadow-[0_0_0_4px_rgba(37,99,235,0.12)] dark:border-zinc-950 dark:bg-blue-400" />
@@ -241,10 +211,24 @@ function TimelineEntry({
               </span>
             )}
 
-            {item.description && (
-              <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                {item.description}
-              </p>
+            {item.points && item.points.length > 0 ? (
+              <ul className="mt-4 space-y-1.5 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                {item.points.map((point, pointIndex) => (
+                  <li key={pointIndex} className="flex gap-2.5">
+                    <span
+                      aria-hidden
+                      className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600 dark:bg-blue-400"
+                    />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              item.description && (
+                <p className="mt-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  {item.description}
+                </p>
+              )
             )}
           </TiltCard>
         </Reveal>
@@ -255,28 +239,10 @@ function TimelineEntry({
 
 export default function Timeline() {
   const reduced = useReducedMotion();
-  const { lite } = usePerformanceMode();
-  const sectionRef = useInViewPause<HTMLElement>();
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: timelineRef,
-    offset: ["start end", "end center"],
-  });
-  const lineProgress = useSpring(scrollYProgress, {
-    stiffness: 90,
-    damping: 26,
-    restDelta: 0.001,
-  });
-
   const [activeTab, setActiveTab] = useState<TabKey>("education");
-  const [direction, setDirection] = useState(1);
 
   const selectTab = (next: TabKey) => {
     if (next === activeTab) return;
-
-    const currentIndex = tabs.findIndex((tab) => tab.key === activeTab);
-    const nextIndex = tabs.findIndex((tab) => tab.key === next);
-    setDirection(nextIndex > currentIndex ? 1 : -1);
     setActiveTab(next);
   };
 
@@ -297,13 +263,11 @@ export default function Timeline() {
   };
 
   const entries = buildEntries(activeTab);
-  const segmentCount = Math.max(entries.length - 1, 1);
 
   return (
     <section
       id="timeline"
-      ref={sectionRef}
-      className="cv-auto relative isolate overflow-hidden px-4 py-24"
+      className="relative isolate overflow-hidden px-4 py-24"
     >
       <div
         aria-hidden
@@ -325,23 +289,6 @@ export default function Timeline() {
               "radial-gradient(circle at 18% 14%, rgba(37,99,235,0.28), transparent 45%), radial-gradient(circle at 84% 24%, rgba(59,130,246,0.2), transparent 48%), radial-gradient(circle at 52% 92%, rgba(30,64,175,0.26), transparent 52%)",
           }}
         />
-
-        {!lite && (
-          <>
-            <div
-              className="absolute -left-24 top-16 h-80 w-80 animate-float rounded-full bg-blue-400/25 blur-2xl motion-reduce:animate-none dark:bg-blue-600/15"
-              style={{ animationDelay: "0s", animationDuration: "9s" }}
-            />
-            <div
-              className="absolute -right-20 top-1/3 h-96 w-96 animate-float rounded-full bg-blue-500/20 blur-2xl motion-reduce:animate-none dark:bg-blue-500/10"
-              style={{ animationDelay: "2.2s", animationDuration: "11s" }}
-            />
-            <div
-              className="absolute -bottom-24 left-1/3 h-80 w-80 animate-float rounded-full bg-blue-300/20 blur-2xl motion-reduce:animate-none dark:bg-blue-700/15"
-              style={{ animationDelay: "4s", animationDuration: "10s" }}
-            />
-          </>
-        )}
 
         <div className="absolute inset-0 blue-dots opacity-70 dark:opacity-50" />
         <div className="absolute inset-0 grid-bg opacity-15 dark:opacity-10" />
@@ -419,19 +366,18 @@ export default function Timeline() {
           </div>
         </Reveal>
 
-        <div ref={timelineRef} className="relative mx-auto mt-12">
-          <AnimatePresence mode="wait" initial={false} custom={direction}>
+        <div className="relative mx-auto mt-12">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
               id="timeline-panel"
               role="tabpanel"
               aria-labelledby={`timeline-tab-${activeTab}`}
-              custom={direction}
               variants={panelVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: reduced ? 0 : 0.35, ease: "easeOut" }}
+              transition={{ duration: reduced ? 0 : 0.25, ease: "easeOut" }}
             >
               {entries.map((item, index) => (
                 <TimelineEntry
@@ -439,10 +385,8 @@ export default function Timeline() {
                   item={item}
                   type={activeTab}
                   index={index}
-                  segmentCount={segmentCount}
                   side={index % 2 === 0 ? "left" : "right"}
                   isLast={index === entries.length - 1}
-                  scrollYProgress={lineProgress}
                 />
               ))}
             </motion.div>

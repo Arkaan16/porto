@@ -31,8 +31,8 @@ const roles = profile.role
 const floatingChips = [
   { label: "Laravel", position: "left-0 top-2 sm:-left-4", delay: "0s", duration: "6s" },
   { label: "Next.js", position: "-right-1 top-1/4 sm:-right-6", delay: "1.4s", duration: "7s" },
-  { label: "Tailwind", position: "-left-2 bottom-1/4 sm:-left-7", delay: "2.6s", duration: "6.5s" },
-  { label: "UI/UX", position: "bottom-2 right-0 sm:-right-3", delay: "0.7s", duration: "7.5s" },
+  { label: "Fullstack", position: "-left-2 bottom-1/4 sm:-left-7", delay: "2.6s", duration: "6.5s" },
+  { label: "IT Support", position: "bottom-2 right-0 sm:-right-3", delay: "0.7s", duration: "7.5s" },
 ];
 
 interface MagneticLinkProps {

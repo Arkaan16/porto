@@ -1,15 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  AnimatePresence,
-  animate,
-  motion,
-  useReducedMotion,
-  type Variants,
-} from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { profile } from "@/data/profile";
-import { usePerformanceMode } from "./usePerformanceMode";
 
 const SPLASH_FLAG = "porto:splash-seen";
 
@@ -18,28 +11,23 @@ const initials = (nameParts.length > 1 ? nameParts.slice(-2) : nameParts)
   .map((part) => part[0] ?? "")
   .join("")
   .toUpperCase();
-const nameLetters = Array.from(profile.name);
 const roleLabel = profile.role
   .split("|")
   .map((role) => role.trim())
   .filter(Boolean)
   .join(" • ");
 
-type Phase = "intro" | "exit" | "done";
+const HOLD_MS = 2200;
+const HOLD_S = HOLD_MS / 1000;
+const FADE_IN_S = 0.4;
+const FADE_OUT_S = 0.45;
 
 export default function SplashScreen() {
   const reduced = useReducedMotion();
-  const { lite } = usePerformanceMode();
-  const [phase, setPhase] = useState<Phase>("intro");
-  const [progress, setProgress] = useState(0);
-  const [atNinety, setAtNinety] = useState(false);
-  const [pageLoaded, setPageLoaded] = useState(false);
-  const [showSkip, setShowSkip] = useState(false);
+  const [show, setShow] = useState(true);
 
-  const skipRef = useRef(false);
   const finishedRef = useRef(false);
-  const ninetyRef = useRef(false);
-  const hundredRef = useRef(false);
+  const skipRef = useRef(false);
 
   const finish = useCallback((preserveSkip = false) => {
     if (finishedRef.current) return;
@@ -51,7 +39,7 @@ export default function SplashScreen() {
     }
 
     window.dispatchEvent(new CustomEvent("splash:done"));
-    setPhase("done");
+    setShow(false);
   }, []);
 
   useEffect(() => {
@@ -66,8 +54,8 @@ export default function SplashScreen() {
 
     if (alreadySeen) {
       skipRef.current = true;
-      const timer = setTimeout(() => finish(true), 0);
-      return () => clearTimeout(timer);
+      finish(true);
+      return;
     }
 
     root.dataset.splash = "loading";
@@ -75,14 +63,12 @@ export default function SplashScreen() {
       sessionStorage.setItem(SPLASH_FLAG, "1");
     } catch {}
 
-    if (reduced) return;
-
-    const timer = setTimeout(() => setShowSkip(true), 800);
+    const timer = setTimeout(() => setShow(false), reduced ? 250 : HOLD_MS);
     return () => clearTimeout(timer);
   }, [finish, reduced]);
 
   useEffect(() => {
-    if (skipRef.current || phase === "done") return;
+    if (!show || skipRef.current) return;
 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -90,248 +76,70 @@ export default function SplashScreen() {
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [phase]);
-
-  useEffect(() => {
-    if (skipRef.current || reduced) return;
-
-    if (document.readyState === "complete") {
-      const timer = setTimeout(() => setPageLoaded(true), 0);
-      return () => clearTimeout(timer);
-    }
-
-    const onLoad = () => setPageLoaded(true);
-    window.addEventListener("load", onLoad);
-    return () => window.removeEventListener("load", onLoad);
-  }, [reduced]);
-
-  useEffect(() => {
-    if (skipRef.current || reduced || phase !== "intro" || ninetyRef.current) return;
-    ninetyRef.current = true;
-
-    const controls = animate(0, 90, {
-      duration: 1.35,
-      ease: "easeInOut",
-      onUpdate: (value) => setProgress(Math.round(value)),
-      onComplete: () => setAtNinety(true),
-    });
-
-    return () => controls.stop();
-  }, [phase, reduced]);
-
-  useEffect(() => {
-    if (
-      skipRef.current ||
-      reduced ||
-      phase !== "intro" ||
-      !atNinety ||
-      !pageLoaded ||
-      hundredRef.current
-    ) {
-      return;
-    }
-    hundredRef.current = true;
-
-    const controls = animate(90, 100, {
-      duration: 0.35,
-      ease: "easeOut",
-      onUpdate: (value) => setProgress(Math.round(value)),
-      onComplete: () => setPhase("exit"),
-    });
-
-    return () => controls.stop();
-  }, [atNinety, pageLoaded, phase, reduced]);
-
-  useEffect(() => {
-    if (skipRef.current || !reduced || phase !== "intro") return;
-
-    const timer = setTimeout(() => setPhase("exit"), 450);
-    return () => clearTimeout(timer);
-  }, [phase, reduced]);
-
-  const handleSkip = () => {
-    if (finishedRef.current) return;
-    setPhase("exit");
-  };
-
-  const instantExit = { opacity: 0, transition: { duration: 0 } };
-  const overlayVariants: Variants = {
-    visible: { opacity: 1, transition: { duration: reduced ? 0.25 : 0.12 } },
-    exit: reduced
-      ? { opacity: 0, transition: { duration: 0.15 } }
-      : {
-          y: "-102%",
-          borderBottomLeftRadius: "46% 96px",
-          borderBottomRightRadius: "46% 96px",
-          transition: { duration: 0.62, ease: "easeInOut", delay: 0.18 },
-        },
-  };
+  }, [show]);
 
   return (
     <AnimatePresence onExitComplete={() => finish()}>
-      {phase === "intro" && (
+      {show && (
         <motion.div
           id="splash"
           role="status"
           aria-live="polite"
-          variants={overlayVariants}
-          initial="visible"
-          animate="visible"
-          exit={skipRef.current && finishedRef.current ? instantExit : "exit"}
-          className="fixed inset-0 z-[9999] overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1e3a8a] to-[#2563eb] text-white"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{
+            opacity: 0,
+            transition: { duration: reduced ? 0 : FADE_OUT_S, ease: "easeIn" },
+          }}
+          transition={{
+            duration: reduced ? 0 : FADE_IN_S,
+            ease: "easeOut",
+          }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-background text-foreground"
         >
           <span className="sr-only">Loading portfolio</span>
 
-          {!reduced && !lite && (
-            <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div
-                className="absolute -left-24 top-1/5 h-72 w-72 animate-float rounded-full bg-blue-400/30 blur-2xl"
-                style={{ animationDelay: "0s", animationDuration: "5.5s" }}
-              />
-              <div
-                className="absolute -right-20 top-1/3 h-80 w-80 animate-float rounded-full bg-blue-300/20 blur-2xl"
-                style={{ animationDelay: "1.4s", animationDuration: "6.5s" }}
-              />
-              <div
-                className="absolute -bottom-28 left-1/3 h-96 w-96 animate-float rounded-full bg-blue-600/30 blur-2xl"
-                style={{ animationDelay: "2.4s", animationDuration: "7.5s" }}
-              />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(37,99,235,0.16),transparent_60%)]"
+          />
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: reduced ? 0 : 0.5,
+              delay: reduced ? 0 : 0.1,
+              ease: "easeOut",
+            }}
+            className="relative flex flex-col items-center px-6"
+          >
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-900 text-2xl font-bold text-white shadow-lg shadow-blue-900/20 sm:h-20 sm:w-20 sm:text-3xl dark:bg-blue-600">
+              {initials}
             </div>
-          )}
 
-          <div aria-hidden className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
-          <div aria-hidden className="pointer-events-none absolute inset-0">
-            <div className="noise h-full w-full opacity-70" />
-          </div>
-
-          <div className="relative z-10 flex h-full flex-col items-center justify-center px-6">
-            <motion.div
-              aria-hidden
-              variants={{
-                hidden: reduced
-                  ? { opacity: 0 }
-                  : { opacity: 0, scale: 0.92, y: 12 },
-                visible: {
-                  opacity: 1,
-                  scale: 1,
-                  y: 0,
-                  transition: reduced
-                    ? { duration: 0 }
-                    : { delay: 0.12, duration: 0.6, ease: "easeOut" },
-                },
-                exit: {
-                  opacity: 0,
-                  scale: 0.82,
-                  transition: { duration: reduced ? 0.15 : 0.26, ease: "easeIn" },
-                },
-              }}
-              className="relative flex h-40 w-40 items-center justify-center sm:h-48 sm:w-48"
-            >
-              <svg viewBox="0 0 160 160" className="absolute inset-0 h-full w-full -rotate-90">
-                <defs>
-                  <linearGradient id="splash-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#bfdbfe" />
-                    <stop offset="50%" stopColor="#60a5fa" />
-                    <stop offset="100%" stopColor="#1e3a8a" />
-                  </linearGradient>
-                </defs>
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="72"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.14)"
-                  strokeWidth="2"
-                />
-                <motion.circle
-                  cx="80"
-                  cy="80"
-                  r="72"
-                  fill="none"
-                  stroke="url(#splash-ring-gradient)"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  pathLength={1}
-                  strokeDasharray={1}
-                  initial={reduced ? false : { strokeDashoffset: 1 }}
-                  animate={{ strokeDashoffset: 0 }}
-                  transition={{ duration: reduced ? 0 : 1.05, ease: "easeInOut" }}
-                />
-              </svg>
-              <span className="font-display text-6xl font-bold tracking-tight text-white drop-shadow-[0_0_20px_rgba(147,197,253,0.55)] sm:text-7xl">
-                {initials}
-              </span>
-            </motion.div>
-
-            <p className="mt-8 flex flex-wrap justify-center font-display text-lg font-semibold tracking-tight sm:text-xl">
-              {nameLetters.map((letter, index) => (
-                <motion.span
-                  key={`${letter}-${index}`}
-                  aria-hidden
-                  className="inline-block whitespace-pre"
-                  variants={{
-                    hidden: reduced ? { opacity: 0 } : { opacity: 0, y: 8 },
-                    visible: {
-                      opacity: 1,
-                      y: 0,
-                      transition: reduced
-                        ? { duration: 0 }
-                        : { delay: 0.42 + index * 0.035, duration: 0.36 },
-                    },
-                    exit: { opacity: 0, transition: { duration: reduced ? 0.15 : 0.2 } },
-                  }}
-                >
-                  {letter === " " ? "\u00A0" : letter}
-                </motion.span>
-              ))}
+            <p className="mt-6 font-display text-xl font-semibold tracking-tight sm:text-2xl">
+              {profile.name}
             </p>
 
-            <motion.p
-              aria-hidden
-              variants={{
-                hidden: reduced ? { opacity: 0 } : { opacity: 0, y: 6 },
-                visible: {
-                  opacity: 1,
-                  y: 0,
-                  transition: reduced ? { duration: 0 } : { delay: 0.95, duration: 0.4 },
-                },
-                exit: { opacity: 0, transition: { duration: reduced ? 0.15 : 0.2 } },
-              }}
-              className="mt-3 text-center font-mono text-[11px] tracking-[0.14em] text-blue-100/85"
-            >
+            <p className="mt-2 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
               {roleLabel}
-            </motion.p>
-          </div>
+            </p>
 
-          {!reduced && (
-            <div className="absolute bottom-7 right-6 z-20 font-mono text-xs tabular-nums text-blue-100/90">
-              {String(progress).padStart(3, "0")}
-            </div>
-          )}
-
-          <AnimatePresence>
-            {showSkip && phase === "intro" && !reduced && (
-              <motion.button
-                type="button"
-                onClick={handleSkip}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="absolute bottom-14 right-6 z-30 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/85 backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
-              >
-                Skip
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {!reduced && (
-            <div aria-hidden className="absolute inset-x-0 bottom-0 z-20 h-[3px] bg-white/10">
+            <div className="mt-7 h-1 w-40 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
               <motion.div
-                style={{ scaleX: progress / 100 }}
-                className="h-full w-full origin-left bg-gradient-to-r from-blue-300 via-blue-400 to-blue-600"
+                aria-hidden
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{
+                  duration: reduced ? 0 : HOLD_S,
+                  ease: "easeInOut",
+                }}
+                className="h-full w-full origin-left rounded-full bg-gradient-to-r from-blue-500 to-blue-700 dark:from-blue-400 dark:to-blue-600"
               />
             </div>
-          )}
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

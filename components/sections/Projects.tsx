@@ -22,7 +22,6 @@ import Image from "next/image";
 import { designProjects, projects } from "@/data/profile";
 import Reveal from "@/components/ui/Reveal";
 import SectionHeading from "@/components/ui/SectionHeading";
-import TiltCard from "@/components/ui/TiltCard";
 import { useInViewPause } from "@/components/ui/useInView";
 import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
 
@@ -36,9 +35,9 @@ const tabs: { key: TabKey; label: string }[] = [
 ];
 
 const panelVariants: Variants = {
-  enter: (direction: number) => ({ opacity: 0, x: direction * 40 }),
-  center: { opacity: 1, x: 0 },
-  exit: (direction: number) => ({ opacity: 0, x: direction * -40 }),
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 const actionIconPaths: Record<ActionIconName, ReactNode> = {
@@ -191,6 +190,7 @@ function WebProjectCard({
   onDetail: (project: Project, trigger: HTMLButtonElement) => void;
 }) {
   const number = String(index + 1).padStart(2, "0");
+  const reduced = useReducedMotion();
 
   return (
     <Reveal
@@ -198,11 +198,11 @@ function WebProjectCard({
       delay={Math.min(index * 0.08, 0.32)}
       className="h-full"
     >
-      <TiltCard
-        max={6}
-        glare={false}
-        outerClassName="h-full w-full"
-        className="group/card relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-zinc-200/80 bg-zinc-900 shadow-lg shadow-blue-950/10 dark:border-zinc-700/60"
+      <motion.article
+        whileHover={reduced ? undefined : { y: -8 }}
+        whileTap={reduced ? undefined : { scale: 0.99 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="group/card relative aspect-[4/3] w-full overflow-hidden rounded-[1.75rem] border border-zinc-200/80 bg-zinc-900 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.6)] transition-[box-shadow,border-color] duration-500 hover:border-blue-400/50 hover:shadow-[0_40px_80px_-36px_rgba(37,99,235,0.6)] dark:border-zinc-700/60 dark:hover:border-blue-400/30"
       >
         <Image
           src={project.thumbnail}
@@ -211,30 +211,43 @@ function WebProjectCard({
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           quality={70}
           loading="lazy"
-          className="object-cover transition-transform duration-700 ease-out group-hover/card:scale-110"
+          className="object-cover transition-transform duration-[900ms] ease-out group-hover/card:scale-[1.08]"
         />
 
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/30 to-transparent opacity-95 transition-opacity duration-500 group-hover/card:opacity-100"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/5"
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-700/30 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-600/25 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover/card:opacity-100"
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute right-4 top-1 font-mono text-6xl font-bold leading-none text-white/10 transition-transform duration-700 group-hover/card:-translate-y-1"
-        >
-          {number}
-        </span>
+          className="pointer-events-none absolute inset-0 -translate-x-full bg-[linear-gradient(110deg,transparent_32%,rgba(255,255,255,0.16)_50%,transparent_68%)] transition-transform duration-[1100ms] ease-out group-hover/card:translate-x-full"
+        />
 
-        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+        <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4 sm:p-5">
+          <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.14em] text-white/75">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+            {number}
+          </span>
+          <button
+            type="button"
+            onClick={(event) => onDetail(project, event.currentTarget)}
+            aria-label={`View ${project.title} details`}
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-all duration-300 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 group-hover/card:-rotate-45 group-hover/card:border-blue-300/60 group-hover/card:bg-blue-600"
+          >
+            <ActionIcon name="arrow" className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 z-10 p-5 sm:p-6">
           <div className="flex flex-wrap gap-1.5">
             {project.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-[9px] font-medium text-white/80"
+                className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 font-mono text-[9px] font-medium text-white/85 backdrop-blur-sm"
               >
                 {tag}
               </span>
@@ -244,7 +257,7 @@ function WebProjectCard({
           <h3 className="mt-3 font-display text-lg font-bold leading-tight text-white sm:text-xl">
             {project.title}
           </h3>
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-200/85">
+          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-300/85">
             {project.description}
           </p>
 
@@ -276,7 +289,7 @@ function WebProjectCard({
             )}
           </div>
         </div>
-      </TiltCard>
+      </motion.article>
     </Reveal>
   );
 }
@@ -560,6 +573,21 @@ function DesignLightbox({
   );
 }
 
+function ProjectsLoader({ label }: { label: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex min-h-[16rem] flex-col items-center justify-center gap-4 pt-10 sm:min-h-[20rem]"
+    >
+      <span className="h-10 w-10 animate-spin rounded-full border-[3px] border-blue-200 border-t-blue-600 motion-reduce:animate-none dark:border-blue-500/25 dark:border-t-blue-400" />
+      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+        {label}
+      </p>
+    </div>
+  );
+}
+
 export default function Projects() {
   const reduced = useReducedMotion();
   const { lite } = usePerformanceMode();
@@ -569,9 +597,19 @@ export default function Projects() {
   const lightboxDialogRef = useRef<HTMLDivElement>(null);
   const detailTriggerRef = useRef<HTMLElement | null>(null);
   const lightboxTriggerRef = useRef<HTMLElement | null>(null);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (loadingTimerRef.current !== null) {
+        clearTimeout(loadingTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const [activeTab, setActiveTab] = useState<TabKey>("web");
-  const [direction, setDirection] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -610,13 +648,18 @@ export default function Projects() {
   const selectTab = (next: TabKey) => {
     if (next === activeTab) return;
 
-    const currentIndex = tabs.findIndex((tab) => tab.key === activeTab);
-    const nextIndex = tabs.findIndex((tab) => tab.key === next);
-
-    setDirection(nextIndex > currentIndex ? 1 : -1);
     setActiveTab(next);
     setSelectedProject(null);
     setLightboxIndex(null);
+
+    if (loadingTimerRef.current !== null) {
+      clearTimeout(loadingTimerRef.current);
+    }
+    setLoading(true);
+    loadingTimerRef.current = setTimeout(
+      () => setLoading(false),
+      reduced ? 150 : 900,
+    );
   };
 
   const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -701,8 +744,18 @@ export default function Projects() {
               role="tablist"
               aria-label="Project categories"
               onKeyDown={handleTabKeyDown}
-              className="glass flex w-full max-w-xs items-center gap-1 rounded-full p-1.5"
+              className="glass relative flex w-full max-w-xs items-center rounded-full p-1.5"
             >
+              <motion.span
+                aria-hidden
+                className="absolute inset-y-1.5 left-1.5 z-0 w-[calc(50%_-_0.375rem)] rounded-full bg-blue-900 shadow-lg shadow-blue-900/20 dark:bg-blue-600"
+                animate={{ x: activeTab === "web" ? "0%" : "100%" }}
+                transition={
+                  reduced
+                    ? { duration: 0 }
+                    : { type: "spring", stiffness: 420, damping: 34 }
+                }
+              />
               {tabs.map((tab) => {
                 const active = activeTab === tab.key;
 
@@ -716,24 +769,12 @@ export default function Projects() {
                     aria-controls="projects-panel"
                     tabIndex={active ? 0 : -1}
                     onClick={() => selectTab(tab.key)}
-                    className={`relative flex-1 rounded-full px-4 py-2.5 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-offset-zinc-950 sm:text-sm ${
+                    className={`relative z-10 flex-1 rounded-full px-4 py-2.5 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-offset-zinc-950 sm:text-sm ${
                       active
                         ? "text-white"
                         : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                     }`}
                   >
-                    {active && (
-                      <motion.span
-                        layoutId="projects-tab-pill"
-                        aria-hidden
-                        className="absolute inset-0 rounded-full bg-blue-900 shadow-lg shadow-blue-900/20 dark:bg-blue-600"
-                        transition={
-                          reduced
-                            ? { duration: 0 }
-                            : { type: "spring", stiffness: 340, damping: 30 }
-                        }
-                      />
-                    )}
                     <span className="relative z-10">{tab.label}</span>
                   </button>
                 );
@@ -741,34 +782,61 @@ export default function Projects() {
             </div>
           </Reveal>
 
-          <AnimatePresence mode="wait" initial={false} custom={direction}>
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
               id="projects-panel"
               role="tabpanel"
               aria-labelledby={`projects-tab-${activeTab}`}
-              custom={direction}
               variants={panelVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: reduced ? 0 : 0.35, ease: "easeOut" }}
+              transition={{ duration: reduced ? 0 : 0.22, ease: "easeOut" }}
               className="mt-10"
             >
-              {activeTab === "web" ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-                  {projects.map((project, index) => (
-                    <WebProjectCard
-                      key={project.id}
-                      project={project}
-                      index={index}
-                      onDetail={openDetail}
-                    />
-                  ))}
+              <div className="relative">
+                <AnimatePresence>
+                  {loading && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute inset-x-0 top-0 z-10"
+                    >
+                      <ProjectsLoader
+                        label={
+                          activeTab === "web"
+                            ? "Loading web projects"
+                            : "Loading design work"
+                        }
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div
+                  className={`transition-opacity duration-300 ${
+                    loading ? "pointer-events-none opacity-0" : "opacity-100"
+                  }`}
+                >
+                  {activeTab === "web" ? (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+                      {projects.map((project, index) => (
+                        <WebProjectCard
+                          key={project.id}
+                          project={project}
+                          index={index}
+                          onDetail={openDetail}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <DesignGallery onOpen={openLightbox} />
+                  )}
                 </div>
-              ) : (
-                <DesignGallery onOpen={openLightbox} />
-              )}
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>

@@ -63,40 +63,56 @@ export const experience = [
     company: "PT. Bukit Asam Tbk Tarahan Port",
     role: "Full Stack Developer (Research Project)",
     period: "December 2025 - February 2026",
-    description:
-      "Designed and developed SIMA (Sistem Manajemen Aset), a web-based asset management system for company assets using Laravel 12 and Livewire 3 with a reactive, SPA-like user experience styled with Tailwind CSS v4. Implemented strict Role-Based Access Control (RBAC) to separate Administrator and Employee permissions, ensuring data integrity and operational security. Built full CRUD functionality for asset, user, and master data management using Laravel Policies (AssetPolicy, MaintenancePolicy) and middleware-based authorization. Developed role-based dashboards with global statistics for Admins and personalized task views for Employees, along with QR code scanning for asset tracking and a tiered reporting system.",
+    points: [
+      "Designed and developed SIMA (Sistem Manajemen Aset), a web-based asset management system using Laravel 12, Livewire 3, and Tailwind CSS v4 with a reactive, SPA-like experience.",
+      "Implemented strict Role-Based Access Control (RBAC) to separate Administrator and Employee permissions, ensuring data integrity and operational security.",
+      "Built full CRUD for asset, user, and master data management using Laravel Policies (AssetPolicy, MaintenancePolicy) and middleware-based authorization.",
+      "Developed role-based dashboards with global statistics for Admins and personalized task views for Employees.",
+      "Added QR code scanning for asset tracking and a tiered reporting system.",
+    ],
   },
   {
     id: 2,
     company: "PT. Bukit Asam Tbk Tarahan Port",
     role: "IT Staff",
     period: "February 2025 - June 2025",
-    description:
-      "Performed installation, configuration, and maintenance of network infrastructure within the port's operational environment. Assisted in hardware and software troubleshooting to support smooth daily operations. Built the backend of an E-Logbook system using Laravel 10 and MySQL, fully digitalizing guest record-keeping to improve efficiency and security. Developed a secure RBAC (Role-Based Access Control) system for 4 user roles with real-time notifications to speed up visitor verification.",
+    points: [
+      "Performed installation, configuration, and maintenance of network infrastructure within the port's operational environment.",
+      "Assisted in hardware and software troubleshooting to support smooth daily operations.",
+      "Built the backend of an E-Logbook system using Laravel 10 and MySQL, fully digitalizing guest record-keeping to improve efficiency and security.",
+      "Developed a secure RBAC system for 4 user roles with real-time notifications to speed up visitor verification.",
+    ],
   },
   {
     id: 3,
     company: "Universitas Lampung",
     role: "Teaching Assistant — Artificial Intelligence",
     period: "February 2025 - June 2025",
-    description:
+    points: [
       "Assisted students in Machine Learning, NLP, Deep Learning, and computational logic concepts.",
+    ],
   },
   {
     id: 4,
     company: "Himpunan Mahasiswa Ilmu Komputer",
     role: "Website Coordinator",
     period: "June 2024 - August 2024",
-    description:
-      "Led the development of the web application for The Computer Science Showdown (CSS), an annual competition event organized by the Computer Science Student Association (Himpunan Mahasiswa Ilmu Komputer). Coordinated the website team and streamlined the registration process for participants by building a platform to manage event sign-ups, participant details, and competition schedules. Enhanced the overall experience for both competitors and organizers by leveraging modern web technologies, ensuring smooth event management and a seamless, user-friendly registration flow.",
+    points: [
+      "Led the development of the web application for The Computer Science Showdown (CSS), an annual competition event organized by the Computer Science Student Association.",
+      "Coordinated the website team and streamlined participant registration.",
+      "Built a platform to manage event sign-ups, participant details, and competition schedules.",
+      "Ensured smooth event management and a seamless, user-friendly registration flow using modern web technologies.",
+    ],
   },
   {
     id: 5,
     company: "Universitas Lampung",
     role: "Teaching Assistant — Multimedia",
     period: "August 2024 - December 2024",
-    description:
-      "Assisted students in mastering multimedia software including Adobe Photoshop, Blender, CorelDRAW, Adobe Premiere, and Pivot Animator for design and animation projects.",
+    points: [
+      "Assisted students in mastering multimedia software including Adobe Photoshop, Blender, CorelDRAW, Adobe Premiere, and Pivot Animator.",
+      "Supported design and animation projects from concept to final output.",
+    ],
   },
 ];
 

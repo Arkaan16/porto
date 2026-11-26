@@ -1,7 +1,4 @@
-"use client";
-
 import type { CSSProperties, ReactNode } from "react";
-import { usePerformanceMode } from "./usePerformanceMode";
 
 interface MarqueeProps {
   children: ReactNode;
@@ -18,29 +15,21 @@ export default function Marquee({
   pauseOnHover = true,
   className = "",
 }: MarqueeProps) {
-  const { lite } = usePerformanceMode();
   const style = { "--marquee-duration": `${speed}s` } as CSSProperties;
-
-  if (lite) {
-    return (
-      <div className={`flex flex-wrap items-center justify-center gap-3 ${className}`}>
-        {children}
-      </div>
-    );
-  }
+  const rowClassName = "flex shrink-0 items-center gap-8 whitespace-nowrap pr-8";
 
   return (
     <div
-      className={`group relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)] ${className}`}
+      className={`group relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)] ${className}`}
       style={style}
     >
       <div
-        className={`flex w-max animate-marquee motion-reduce:animate-none ${
+        className={`flex w-max flex-nowrap animate-marquee motion-reduce:animate-none ${
           direction === "right" ? "[animation-direction:reverse]" : ""
         } ${pauseOnHover ? "group-hover:[animation-play-state:paused]" : ""}`}
       >
-        <div className="flex shrink-0 items-center gap-8 pr-8">{children}</div>
-        <div className="flex shrink-0 items-center gap-8 pr-8" aria-hidden>
+        <div className={rowClassName}>{children}</div>
+        <div className={rowClassName} aria-hidden>
           {children}
         </div>
       </div>

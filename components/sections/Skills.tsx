@@ -1,21 +1,7 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from "react";
-import {
-  animate,
-  motion,
-  useInView,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-  useTransform,
-} from "framer-motion";
+import { type ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { hardSkills, softSkills, tools } from "@/data/profile";
 import Marquee from "@/components/ui/Marquee";
 import Reveal from "@/components/ui/Reveal";
@@ -132,7 +118,7 @@ function SectionLabel({ index, title, hint }: { index: string; title: string; hi
   );
 }
 
-function SkillRing({
+function HardSkillBar({
   skill,
   index,
 }: {
@@ -140,99 +126,44 @@ function SkillRing({
   index: number;
 }) {
   const reduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.35 });
-  const progress = useMotionValue(0);
-  const rawId = useId();
-  const gradientId = `ring-${rawId.replace(/:/g, "")}`;
-  const radius = 48;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = useTransform(
-    progress,
-    (value) => circumference * (1 - value / 100),
-  );
-  const label = useTransform(progress, (value) => `${Math.round(value)}%`);
-
-  useEffect(() => {
-    if (reduced) {
-      progress.set(skill.level);
-      return;
-    }
-
-    if (!inView) return;
-
-    const controls = animate(progress, skill.level, {
-      duration: 1.05,
-      delay: index * 0.04,
-      ease: [0.22, 1, 0.36, 1] as const,
-    });
-
-    return () => controls.stop();
-  }, [inView, index, progress, reduced, skill.level]);
+  const target = Math.min(100, Math.max(0, skill.level)) / 100;
+  const delay = Math.min(index * 0.05, 0.35);
 
   return (
-    <Reveal
-      variant="zoom"
-      delay={Math.min(index * 0.05, 0.28)}
-      className="h-full"
+    <motion.li
+      initial={reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.4 }}
+      transition={{
+        duration: reduced ? 0 : 0.45,
+        delay: reduced ? 0 : delay,
+        ease: "easeOut",
+      }}
+      className="group/skill rounded-2xl border border-transparent px-2 py-2 transition-colors duration-300 hover:border-blue-200/70 hover:bg-blue-50/50 dark:hover:border-blue-400/15 dark:hover:bg-blue-400/5"
     >
-      <motion.div
-        ref={ref}
-        whileHover={reduced ? undefined : { y: -6 }}
-        transition={{ type: "spring", stiffness: 280, damping: 22 }}
-        className="glass group/skill relative flex h-full min-h-[13rem] flex-col items-center justify-center overflow-hidden rounded-3xl p-5 text-center shadow-sm transition-transform duration-300"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/0 to-blue-500/20 opacity-0 transition-opacity duration-500 group-hover/skill:opacity-100"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-500/20 blur-2xl opacity-0 transition-opacity duration-500 group-hover/skill:opacity-100"
-        />
-
-        <div className="relative transition-transform duration-500 group-hover/skill:rotate-6 motion-reduce:transition-none">
-          <svg viewBox="0 0 120 120" className="h-28 w-28 -rotate-90" aria-hidden>
-            <defs>
-              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#1e40af" />
-                <stop offset="55%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#60a5fa" />
-              </linearGradient>
-            </defs>
-            <circle
-              cx="60"
-              cy="60"
-              r={radius}
-              fill="none"
-              strokeWidth="8"
-              className="stroke-zinc-200 dark:stroke-zinc-700"
-            />
-            <motion.circle
-              cx="60"
-              cy="60"
-              r={radius}
-              fill="none"
-              strokeWidth="8"
-              strokeLinecap="round"
-              stroke={`url(#${gradientId})`}
-              strokeDasharray={circumference}
-              style={{ strokeDashoffset: dashOffset }}
-            />
-          </svg>
-          <motion.span className="absolute inset-0 grid place-items-center font-mono text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {label}
-          </motion.span>
-        </div>
-
-        <p className="relative mt-3 font-display text-sm font-bold leading-snug text-zinc-800 dark:text-zinc-100 sm:text-base">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="flex items-center gap-2 text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
           {skill.name}
-        </p>
-        <p className="relative mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-300">
-          Proficiency
-        </p>
-      </motion.div>
-    </Reveal>
+        </span>
+        <span className="font-mono text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400">
+          {skill.level}%
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-zinc-700/60">
+        <motion.div
+          initial={{ scaleX: reduced ? target : 0 }}
+          whileInView={{ scaleX: target }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{
+            duration: reduced ? 0 : 1,
+            delay: reduced ? 0 : delay,
+            ease: [0.22, 1, 0.36, 1] as const,
+          }}
+          className="h-full w-full origin-left rounded-full bg-gradient-to-r from-blue-700 via-blue-500 to-blue-400"
+        />
+      </div>
+    </motion.li>
   );
 }
 
@@ -281,93 +212,12 @@ function ToolGlyph({ tool }: { tool: Tool }) {
 }
 
 function ToolCard({ tool }: { tool: Tool }) {
-  const reduced = useReducedMotion();
-  const { lite } = usePerformanceMode();
-  const finePointerRef = useRef(false);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useMotionValue(0);
-  const rotateY = useMotionValue(0);
-  const springX = useSpring(x, { stiffness: 200, damping: 24 });
-  const springY = useSpring(y, { stiffness: 200, damping: 24 });
-  const springRotateX = useSpring(rotateX, { stiffness: 200, damping: 24 });
-  const springRotateY = useSpring(rotateY, { stiffness: 200, damping: 24 });
-
-  const frameRef = useRef<number | null>(null);
-  const pendingRef = useRef({ px: 0, py: 0 });
-
-  useEffect(() => {
-    const query = window.matchMedia("(hover: hover) and (pointer: fine)");
-    finePointerRef.current = query.matches;
-    const onChange = () => {
-      finePointerRef.current = query.matches;
-    };
-    query.addEventListener("change", onChange);
-
-    return () => {
-      query.removeEventListener("change", onChange);
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-    };
-  }, []);
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (reduced || lite || !finePointerRef.current || event.pointerType === "touch") {
-      return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    pendingRef.current = {
-      px: (event.clientX - rect.left) / rect.width - 0.5,
-      py: (event.clientY - rect.top) / rect.height - 0.5,
-    };
-
-    if (frameRef.current !== null) return;
-    frameRef.current = requestAnimationFrame(() => {
-      frameRef.current = null;
-      const { px, py } = pendingRef.current;
-      x.set(px * 12);
-      y.set(py * 12);
-      rotateY.set(px * 10);
-      rotateX.set(-py * 10);
-    });
-  };
-
-  const reset = () => {
-    if (frameRef.current !== null) {
-      cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-    x.set(0);
-    y.set(0);
-    rotateX.set(0);
-    rotateY.set(0);
-  };
-
-  const disabled = reduced || lite;
-
   return (
-    <div className="shrink-0 [perspective:800px]">
-      <motion.div
-        onPointerMove={handlePointerMove}
-        onPointerLeave={reset}
-        style={
-          disabled
-            ? undefined
-            : {
-                x: springX,
-                y: springY,
-                rotateX: springRotateX,
-                rotateY: springRotateY,
-                transformStyle: "preserve-3d" as const,
-              }
-        }
-        className="glass group/tool flex w-40 shrink-0 items-center gap-3 rounded-2xl px-4 py-3 shadow-sm transition-colors duration-300 hover:border-blue-300 sm:w-44 dark:hover:border-blue-500/40"
-      >
-        <ToolGlyph tool={tool} />
-        <span className="text-xs font-semibold leading-tight text-zinc-700 dark:text-zinc-200">
-          {tool.name}
-        </span>
-      </motion.div>
+    <div className="glass flex w-40 shrink-0 items-center gap-3 rounded-2xl px-4 py-3 shadow-sm transition-colors duration-300 hover:border-blue-300 sm:w-44 dark:hover:border-blue-500/40">
+      <ToolGlyph tool={tool} />
+      <span className="text-xs font-semibold leading-tight text-zinc-700 dark:text-zinc-200">
+        {tool.name}
+      </span>
     </div>
   );
 }
@@ -453,10 +303,16 @@ export default function Skills() {
               hint="A snapshot of where I feel most confident."
             />
           </Reveal>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {hardSkills.map((skill, index) => (
-              <SkillRing key={skill.name} skill={skill} index={index} />
-            ))}
+          <div className="glass relative overflow-hidden rounded-3xl p-4 shadow-sm sm:p-6">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/60 to-transparent"
+            />
+            <ul className="grid grid-cols-1 gap-x-8 gap-y-1 sm:grid-cols-2">
+              {hardSkills.map((skill, index) => (
+                <HardSkillBar key={skill.name} skill={skill} index={index} />
+              ))}
+            </ul>
           </div>
         </div>
 
@@ -469,7 +325,7 @@ export default function Skills() {
             />
           </Reveal>
           <Reveal variant="fade-up" delay={0.06}>
-            <Marquee direction="left" speed={30} pauseOnHover className="py-1">
+            <Marquee direction="right" speed={34} pauseOnHover className="py-1">
               {softSkills.map((skill) => (
                 <SoftSkillChip key={skill} skill={skill} />
               ))}
@@ -486,7 +342,7 @@ export default function Skills() {
             />
           </Reveal>
           <Reveal variant="fade-up" delay={0.06}>
-            <Marquee direction="right" speed={38} pauseOnHover className="py-3">
+            <Marquee direction="right" speed={34} pauseOnHover className="py-3">
               {tools.map((tool) => (
                 <ToolCard key={tool.name} tool={tool} />
               ))}
