@@ -52,6 +52,11 @@ export default function RootLayout({
                 try {
                   if (sessionStorage.getItem("porto:splash-seen") === "1") {
                     document.documentElement.setAttribute("data-splash", "skip");
+                  } else {
+                    document.documentElement.setAttribute("data-splash", "loading");
+                    var splashStyle = document.createElement("style");
+                    splashStyle.textContent = "html[data-splash=\\"loading\\"]{overflow:hidden} html[data-splash=\\"loading\\"] body>:not(#splash){opacity:0!important;pointer-events:none!important;}";
+                    document.head.appendChild(splashStyle);
                   }
                 } catch(e) {}
               })();

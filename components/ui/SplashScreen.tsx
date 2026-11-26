@@ -85,7 +85,7 @@ export default function SplashScreen() {
           id="splash"
           role="status"
           aria-live="polite"
-          initial={{ opacity: 0 }}
+          initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{
             opacity: 0,

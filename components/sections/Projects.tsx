@@ -71,13 +71,6 @@ const actionIconPaths: Record<ActionIconName, ReactNode> = {
   ),
 };
 
-const designRevealVariants = [
-  "fade-up",
-  "zoom",
-  "blur-in",
-  "fade-right",
-] as const;
-
 function ActionIcon({
   name,
   className = "",
@@ -418,37 +411,34 @@ function DesignGallery({
 }) {
   return (
     <div className="columns-2 gap-3 lg:columns-3 lg:gap-5 xl:columns-4">
-      {designProjects.map((item, index) => (
-        <Reveal
-          key={item.id}
-          variant={designRevealVariants[index % designRevealVariants.length]}
-          delay={(index % 4) * 0.06}
-          className="mb-3 break-inside-avoid lg:mb-5"
-        >
-          <button
-            type="button"
-            onClick={(event) => onOpen(index, event.currentTarget)}
-            aria-label={`Open ${item.title}`}
-            className="group relative block w-full overflow-hidden rounded-2xl border border-zinc-200/80 bg-zinc-200/60 text-left shadow-sm transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700/70 dark:bg-zinc-800/60"
-          >
-            <motion.div
-              layoutId={`design-image-${item.id}`}
-              className="relative w-full overflow-hidden rounded-2xl"
-            >
-              <Image
-                src={item.image}
-                alt={item.title}
-                width={item.width}
-                height={item.height}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              quality={70}
-              loading="lazy"
-              className="h-auto w-full transition-transform duration-700 ease-out group-hover:scale-[1.06]"
-              />
-            </motion.div>
-          </button>
-        </Reveal>
-      ))}
+       {designProjects.map((item, index) => (
+         <div
+           key={item.id}
+           className="mb-3 break-inside-avoid lg:mb-5"
+         >
+           <button
+             type="button"
+             onClick={(event) => onOpen(index, event.currentTarget)}
+             aria-label={`Open ${item.title}`}
+             className="group relative block w-full overflow-hidden rounded-2xl border border-zinc-200/80 bg-zinc-200/60 text-left shadow-sm transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-zinc-700/70 dark:bg-zinc-800/60"
+           >
+             <motion.div
+               className="relative w-full overflow-hidden rounded-2xl"
+             >
+               <Image
+                 src={item.image}
+                 alt={item.title}
+                 width={item.width}
+                 height={item.height}
+               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+               quality={70}
+               loading="lazy"
+               className="h-auto w-full transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+               />
+             </motion.div>
+           </button>
+         </div>
+       ))}
     </div>
   );
 }
@@ -523,12 +513,6 @@ function DesignLightbox({
           </div>
 
           <motion.div
-            layoutId={`design-image-${item.id}`}
-            transition={
-              reduced
-                ? { duration: 0 }
-                : { type: "spring", stiffness: 260, damping: 30 }
-            }
             onClick={(event) => event.stopPropagation()}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
@@ -690,7 +674,7 @@ export default function Projects() {
 
   return (
     <LayoutGroup>
-      <section id="projects" ref={sectionRef} className="cv-auto relative isolate overflow-hidden px-4 py-24">
+      <section id="projects" ref={sectionRef} className="relative isolate overflow-hidden px-4 py-24">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"

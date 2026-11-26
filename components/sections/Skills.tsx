@@ -262,7 +262,7 @@ export default function Skills() {
     <section
       id="skills"
       ref={sectionRef}
-      className="cv-auto relative isolate overflow-hidden px-4 py-24"
+      className="relative isolate overflow-hidden px-4 py-24"
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-zinc-50 to-white dark:from-[#0b1220] dark:via-zinc-950 dark:to-[#081426]" />
@@ -296,7 +296,7 @@ export default function Skills() {
         />
 
         <div className="mt-14">
-          <Reveal variant="fade-up">
+          <Reveal variant="fade-up" className="mb-6 overflow-hidden">
             <SectionLabel
               index="01 / Core"
               title="Hard Skills"

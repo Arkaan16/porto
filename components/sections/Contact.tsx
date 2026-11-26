@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { contactEmail, profile } from "@/data/profile";
 import { Icon } from "@/components/ui/Icon";
+
 import Reveal from "@/components/ui/Reveal";
 import SocialLinks from "@/components/ui/SocialLinks";
 import { useInViewPause } from "@/components/ui/useInView";
@@ -113,7 +114,7 @@ function EmailCard() {
         : "Copy email";
 
   return (
-    <Reveal variant="fade-left" className="h-full">
+    <div className="h-full">
       <div className="glass group relative h-full overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
         <div
           aria-hidden
@@ -177,15 +178,15 @@ function EmailCard() {
           )}
         </AnimatePresence>
       </div>
-    </Reveal>
+    </div>
   );
 }
-
+ 
 function LocationCard() {
   const { lite } = usePerformanceMode();
 
   return (
-    <Reveal variant="zoom" delay={0.08} className="h-full">
+    <div className="h-full">
       <div className="glass relative flex h-full min-h-[13rem] flex-col overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/40 to-transparent dark:from-blue-950/40 dark:via-zinc-900/20 dark:to-transparent" />
         <svg
@@ -236,13 +237,13 @@ function LocationCard() {
           </div>
         </div>
       </div>
-    </Reveal>
+    </div>
   );
 }
-
+ 
 function SocialCard() {
   return (
-    <Reveal variant="blur-in" delay={0.16} className="h-full">
+    <div className="h-full">
       <div className="glass relative h-full overflow-hidden rounded-3xl p-5 shadow-sm sm:p-6">
         <div className="flex items-start gap-4">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800 dark:bg-blue-500/10 dark:text-blue-300">
@@ -259,7 +260,7 @@ function SocialCard() {
         </div>
         <SocialLinks size="sm" className="mt-5 flex-wrap" />
       </div>
-    </Reveal>
+    </div>
   );
 }
 
@@ -391,7 +392,7 @@ export default function Contact() {
     <section
       id="contact"
       ref={sectionRef}
-      className="cv-auto relative isolate overflow-hidden px-4 py-24"
+      className="relative isolate overflow-hidden px-4 py-24"
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-zinc-50 to-white dark:from-[#0b1220] dark:via-zinc-950 dark:to-[#081426]" />
@@ -423,9 +424,9 @@ export default function Contact() {
             <LocationCard />
             <SocialCard />
           </div>
-          <Reveal variant="fade-right" delay={0.2} className="h-full lg:col-span-3">
+          <div className="h-full lg:col-span-3">
             <ContactForm />
-          </Reveal>
+          </div>
         </div>
       </div>
     </section>

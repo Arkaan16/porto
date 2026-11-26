@@ -41,6 +41,15 @@ html[data-splash="skip"] #splash {
   display: none;
 }
 
+html[data-splash="loading"] {
+  overflow: hidden;
+}
+
+html[data-splash="loading"] body > :not(#splash) {
+  opacity: 0;
+  pointer-events: none;
+}
+
 @layer base {
   h1,
   h2,
