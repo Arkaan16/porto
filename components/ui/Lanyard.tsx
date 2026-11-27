@@ -24,6 +24,21 @@ import { usePerformanceMode } from "./usePerformanceMode";
 const ROPE_LENGTH = 128;
 const ANCHOR_Y = 22;
 
+/* How far the card can be pulled (px). Beyond this it resists like rubber. */
+const MAX_PULL_X = 110;
+const MAX_PULL_Y = 80;
+/* Card rotation per px of horizontal pull, capped. */
+const ROTATE_PER_PX = 0.12;
+/* Idle sway: how far the card drifts left/right (px) and one full cycle (s). */
+const IDLE_AMPLITUDE = 16;
+const IDLE_CYCLE = 6.4;
+const MAX_ROTATE = 14;
+
+const rubber = (distance: number, max: number) =>
+  max * Math.tanh(distance / max);
+const clamp = (v: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, v));
+
 const buildRopePath = (centerX: number, offsetX: number, offsetY: number) => {
   const endX = centerX + offsetX;
   const endY = ROPE_LENGTH + offsetY;
@@ -64,12 +79,24 @@ export default function Lanyard({
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const [dragging, setDragging] = useState(false);
+  const draggingRef = useRef(false);
   const dragRef = useRef({ startX: 0, startY: 0, baseX: 0, baseY: 0 });
 
+  // Position of the card (spring-animated back to 0 on release).
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const idleSwing = useMotionValue(0);
-  const dragRotation = useMotionValue(0);
+  // Idle sway is a true sine wave: a phase that advances linearly, mapped to
+// x = sin(phase). Constant speed in phase gives natural pendulum easing with
+// no stop-and-go at the centre.
+const phase = useMotionValue(0);
+  const idleX = useTransform(phase, (p) => Math.sin(p) * IDLE_AMPLITUDE);
+
+  // Drag offset + idle sway = where the card actually is.
+  const totalX = useTransform([x, idleX], ([px, sway]: number[]) => px + sway);
+  // Lean follows the horizontal position, so idle sway and drag both tilt it.
+  const rotate = useTransform(totalX, (v) =>
+    clamp(v * ROTATE_PER_PX, -MAX_ROTATE, MAX_ROTATE),
+  );
 
   const tiltX = useMotionValue(0);
   const tiltY = useMotionValue(0);
@@ -96,65 +123,38 @@ export default function Lanyard({
     return () => observer.disconnect();
   }, []);
 
+  // Idle sway: a slow left-right pendulum loop while nobody touches the card.
+  // Only transforms + one SVG path change per frame, so it also runs in lite
+  // mode. It stops for reduced motion, while dragging, and when off-screen.
   useEffect(() => {
-    if (!dragging) return;
-
-    const handleMove = (event: PointerEvent) => {
-      const info = dragRef.current;
-      const deltaX = event.clientX - info.startX;
-      const deltaY = event.clientY - info.startY;
-
-      x.set(info.baseX + deltaX);
-      y.set(info.baseY + deltaY);
-      dragRotation.set(Math.max(-14, Math.min(14, deltaX * 0.12)));
-    };
-
-    const finish = () => {
-      setDragging(false);
-      animate(x, 0, { type: "spring", stiffness: 42, damping: 10, mass: 1.1 });
-      animate(y, 0, { type: "spring", stiffness: 42, damping: 10, mass: 1.1 });
-      animate(dragRotation, 0, { type: "spring", stiffness: 70, damping: 14 });
-    };
-
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
-
-    return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-    };
-  }, [dragging, x, y, dragRotation]);
-
-  useEffect(() => {
-    if (reduced || lite || !inView) {
-      idleSwing.set(0);
-      dragRotation.set(0);
+    if (reduced || !inView || dragging) {
       return;
     }
 
-    if (dragging) return;
-
-    const controls = animate(idleSwing, 2.2, {
-      duration: 3.8,
-      ease: "easeInOut",
+    const start = phase.get();
+    const controls = animate(phase, start + Math.PI * 2, {
+      duration: IDLE_CYCLE,
+      ease: "linear",
       repeat: Infinity,
-      repeatType: "mirror",
     });
 
     return () => controls.stop();
-  }, [inView, lite, reduced, dragging, idleSwing, dragRotation]);
+  }, [inView, reduced, dragging, phase]);
+
+  /* ---------------- drag (pointer capture, no window listeners) ------- */
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (reduced || lite) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (event.pointerType === "mouse") event.preventDefault();
 
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    // Fold the current idle offset into x so grabbing mid-sway doesn't jump.
+    phase.stop();
     x.stop();
     y.stop();
-    idleSwing.stop();
-    dragRotation.stop();
+    x.set(x.get() + idleX.get());
+    phase.set(0); // sin(0) = 0, so the card stays exactly where it is
 
     dragRef.current = {
       startX: event.clientX,
@@ -162,9 +162,35 @@ export default function Lanyard({
       baseX: x.get(),
       baseY: y.get(),
     };
-    idleSwing.set(0);
+    draggingRef.current = true;
     setDragging(true);
   };
+
+  const handleDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const info = dragRef.current;
+    x.set(rubber(info.baseX + (event.clientX - info.startX), MAX_PULL_X));
+    y.set(rubber(info.baseY + (event.clientY - info.startY), MAX_PULL_Y));
+  };
+
+  const releaseDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setDragging(false);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    // Spring back, carrying the release velocity so it feels like a real fling.
+    const spring = reduced
+      ? ({ duration: 0.25, ease: "easeOut" } as const)
+      : ({ type: "spring", stiffness: 90, damping: 9, mass: 1 } as const);
+
+    animate(x, 0, { ...spring, velocity: x.getVelocity() });
+    animate(y, 0, { ...spring, velocity: y.getVelocity() });
+  };
+
+  /* ---------------- hover tilt (mouse only, off in lite) -------------- */
 
   const tiltFrameRef = useRef<number | null>(null);
   const tiltPendingRef = useRef({ nx: 0.5, ny: 0.5 });
@@ -176,8 +202,13 @@ export default function Lanyard({
     [],
   );
 
-  const handleTiltMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (reduced || lite || dragging || event.pointerType === "touch") return;
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (draggingRef.current) {
+      handleDragMove(event);
+      return;
+    }
+
+    if (reduced || lite || event.pointerType === "touch") return;
 
     const rect = event.currentTarget.getBoundingClientRect();
     tiltPendingRef.current = {
@@ -207,8 +238,10 @@ export default function Lanyard({
     glareY.set(50);
   };
 
+  /* ---------------- rope ---------------------------------------------- */
+
   const centerX = size.width > 0 ? size.width / 2 : 0;
-  const ropeD = buildRopePath(centerX, x.get(), y.get());
+  const ropeD = buildRopePath(centerX, x.get() + idleX.get(), y.get());
 
   const updateRope = (offsetX: number, offsetY: number) => {
     pathRef.current?.setAttribute(
@@ -217,10 +250,14 @@ export default function Lanyard({
     );
   };
 
-  useMotionValueEvent(x, "change", (latest) => updateRope(latest, y.get()));
-  useMotionValueEvent(y, "change", (latest) => updateRope(x.get(), latest));
+  useMotionValueEvent(totalX, "change", (latest) =>
+    updateRope(latest, y.get()),
+  );
+  useMotionValueEvent(y, "change", (latest) =>
+    updateRope(totalX.get(), latest),
+  );
 
-  const shadowX = useTransform(x, (latest) => latest * -0.28);
+  const shadowX = useTransform(totalX, (latest) => latest * -0.28);
   const shadowY = useTransform(y, (latest) => latest * -0.12 + 10);
 
   return (
@@ -337,16 +374,19 @@ export default function Lanyard({
             <circle cx={centerX} cy={ANCHOR_Y} r="2.2" fill="#dbeafe" />
           </g>
 
-          <text
-            fill="rgba(255,255,255,0.85)"
-            fontSize="7"
-            letterSpacing="2"
-            className="font-mono"
-          >
-            <textPath href={`#${pathId}`} startOffset="12%">
-              ARKAAN • PORTFOLIO • ARKAAN • PORTFOLIO •
-            </textPath>
-          </text>
+          {/* Text on a path is re-laid-out every frame the rope moves: skip in lite. */}
+          {!lite && (
+            <text
+              fill="rgba(255,255,255,0.85)"
+              fontSize="7"
+              letterSpacing="2"
+              className="font-mono"
+            >
+              <textPath href={`#${pathId}`} startOffset="12%">
+                ARKAAN • PORTFOLIO • ARKAAN • PORTFOLIO •
+              </textPath>
+            </text>
+          )}
         </svg>
       )}
 
@@ -354,93 +394,98 @@ export default function Lanyard({
         className="absolute left-1/2 z-10 w-60 -translate-x-1/2 sm:w-72"
         style={{ top: ROPE_LENGTH }}
       >
-        <motion.div style={{ x, y }} className="relative origin-top">
+        <motion.div style={{ x: totalX, y }} className="relative origin-top will-change-transform">
+          {/* Soft shadow: radial-gradient instead of blur filter (much cheaper). */}
           <motion.div
             aria-hidden
-            className={`absolute inset-x-10 -bottom-4 h-10 rounded-[50%] bg-zinc-900/25 blur-2xl transition-opacity duration-300 dark:bg-black/60 ${
+            className={`absolute inset-x-6 -bottom-4 h-12 bg-[radial-gradient(ellipse_at_center,rgba(15,23,42,0.35),transparent_70%)] transition-opacity duration-300 dark:bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.6),transparent_70%)] ${
               dragging ? "opacity-80" : "opacity-50"
             }`}
             style={{ x: shadowX, y: shadowY }}
           />
 
-          <motion.div style={{ rotate: idleSwing }} className="origin-top">
-            <motion.div style={{ rotate: dragRotation }} className="origin-top">
-              <div className="[perspective:1200px]">
-                <motion.div
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handleTiltMove}
-                  onPointerLeave={resetTilt}
-                  style={
-                    reduced || lite
-                      ? undefined
-                      : {
-                          rotateX: springTiltX,
-                          rotateY: springTiltY,
-                          transformStyle: "preserve-3d",
-                        }
-                  }
-                  className={`group relative origin-top touch-pan-y select-none ${
-                    dragging ? "cursor-grabbing" : "cursor-grab"
-                  }`}
-                >
-                  <div className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/90 p-3 shadow-[0_28px_65px_-24px_rgba(15,23,42,0.6)] dark:border-white/10 dark:bg-zinc-900/90">
-                    <div className="absolute left-1/2 top-2.5 h-2 w-12 -translate-x-1/2 rounded-full bg-zinc-900/80 dark:bg-zinc-100/80">
-                      <div className="absolute inset-[2px] rounded-full bg-zinc-700/50 dark:bg-zinc-400/50" />
-                    </div>
-                    <div className="absolute -top-2 left-1/2 h-5 w-7 -translate-x-1/2 rounded-full border border-white/80 bg-gradient-to-b from-zinc-100 via-zinc-300 to-zinc-500 shadow-sm dark:border-white/40 dark:from-zinc-500 dark:via-zinc-400 dark:to-zinc-700" />
-
-                    <div className="mt-5 overflow-hidden rounded-2xl ring-1 ring-zinc-900/10 dark:ring-white/10">
-                      <div className="relative aspect-[4/5] bg-zinc-200 dark:bg-zinc-800">
-                        <Image
-                          src={imageSrc}
-                          alt={name}
-                          fill
-                          sizes="(max-width: 640px) 15rem, 18rem"
-                          className="object-cover"
-                          draggable={false}
-                        />
-                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
-                      </div>
-                    </div>
-
-                    <div className="px-1 pb-1 pt-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-bold leading-snug text-zinc-900 dark:text-zinc-100">
-                            {name}
-                          </p>
-                          <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
-                            {role}
-                          </p>
-                        </div>
-                        <span className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-white shadow-sm dark:bg-blue-500">
-                          {badge}
-                        </span>
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <span className="font-mono text-[9px] tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
-                          {idText}
-                        </span>
-                        <span className={`relative h-4 w-14 overflow-hidden rounded-sm bg-[linear-gradient(110deg,#1e3a8a,#60a5fa,#bfdbfe,#2563eb,#1e3a8a)] bg-[length:250%_100%] motion-reduce:animate-none ${lite ? "" : "animate-shimmer"}`}>
-                          <span className="absolute inset-0 flex items-center justify-center font-mono text-[6px] font-bold tracking-[0.2em] text-white/80">
-                            SECURE
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-
-                    {!reduced && !lite && (
-                      <motion.div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                        style={{ background: glareBackground }}
-                      />
-                    )}
+          <motion.div style={{ rotate }} className="origin-top">
+            <div className="[perspective:1200px]">
+              <motion.div
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={releaseDrag}
+                onPointerCancel={releaseDrag}
+                onPointerLeave={resetTilt}
+                style={
+                  reduced || lite
+                    ? undefined
+                    : {
+                        rotateX: springTiltX,
+                        rotateY: springTiltY,
+                        transformStyle: "preserve-3d",
+                      }
+                }
+                className={`group relative origin-top touch-pan-y select-none ${
+                  dragging ? "cursor-grabbing" : "cursor-grab"
+                }`}
+              >
+                <div className="relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/90 p-3 shadow-[0_28px_65px_-24px_rgba(15,23,42,0.6)] dark:border-white/10 dark:bg-zinc-900/90">
+                  <div className="absolute left-1/2 top-2.5 h-2 w-12 -translate-x-1/2 rounded-full bg-zinc-900/80 dark:bg-zinc-100/80">
+                    <div className="absolute inset-[2px] rounded-full bg-zinc-700/50 dark:bg-zinc-400/50" />
                   </div>
-                </motion.div>
-              </div>
-            </motion.div>
+                  <div className="absolute -top-2 left-1/2 h-5 w-7 -translate-x-1/2 rounded-full border border-white/80 bg-gradient-to-b from-zinc-100 via-zinc-300 to-zinc-500 shadow-sm dark:border-white/40 dark:from-zinc-500 dark:via-zinc-400 dark:to-zinc-700" />
+
+                  <div className="mt-5 overflow-hidden rounded-2xl ring-1 ring-zinc-900/10 dark:ring-white/10">
+                    <div className="relative aspect-[4/5] bg-zinc-200 dark:bg-zinc-800">
+                      <Image
+                        src={imageSrc}
+                        alt={name}
+                        fill
+                        sizes="(max-width: 640px) 15rem, 18rem"
+                        className="object-cover"
+                        draggable={false}
+                      />
+                      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+                    </div>
+                  </div>
+
+                  <div className="px-1 pb-1 pt-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-bold leading-snug text-zinc-900 dark:text-zinc-100">
+                          {name}
+                        </p>
+                        <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+                          {role}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-white shadow-sm dark:bg-blue-500">
+                        {badge}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="font-mono text-[9px] tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
+                        {idText}
+                      </span>
+                      <span
+                        className={`relative h-4 w-14 overflow-hidden rounded-sm bg-[linear-gradient(110deg,#1e3a8a,#60a5fa,#bfdbfe,#2563eb,#1e3a8a)] bg-[length:250%_100%] motion-reduce:animate-none ${
+                          lite ? "" : "animate-shimmer"
+                        }`}
+                      >
+                        <span className="absolute inset-0 flex items-center justify-center font-mono text-[6px] font-bold tracking-[0.2em] text-white/80">
+                          SECURE
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {!reduced && !lite && (
+                    <motion.div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      style={{ background: glareBackground }}
+                    />
+                  )}
+                </div>
+              </motion.div>
+            </div>
           </motion.div>
         </motion.div>
       </div>

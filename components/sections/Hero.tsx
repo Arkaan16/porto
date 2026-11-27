@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -15,6 +16,7 @@ import {
   useReducedMotion,
   useSpring,
   useTransform,
+  type Variants,
 } from "framer-motion";
 import Image from "next/image";
 import { profile } from "@/data/profile";
@@ -22,6 +24,9 @@ import SocialLinks from "@/components/ui/SocialLinks";
 import TiltCard from "@/components/ui/TiltCard";
 import { Icon } from "@/components/ui/Icon";
 import { usePerformanceMode } from "@/components/ui/usePerformanceMode";
+
+/* Smooth "expo-out" curve used by every entrance. */
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 const roles = profile.role
   .split("|")
@@ -34,6 +39,10 @@ const floatingChips = [
   { label: "Fullstack", position: "-left-2 bottom-1/4 sm:-left-7", delay: "2.6s", duration: "6.5s" },
   { label: "IT Support", position: "bottom-2 right-0 sm:-right-3", delay: "0.7s", duration: "7.5s" },
 ];
+
+/* ------------------------------------------------------------------ */
+/* Magnetic button                                                     */
+/* ------------------------------------------------------------------ */
 
 interface MagneticLinkProps {
   href: string;
@@ -129,19 +138,66 @@ function MagneticLink({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Role rotator: isolated so its 2s timer never re-renders the Hero     */
+/* ------------------------------------------------------------------ */
+
+function RoleRotator({ active }: { active: boolean }) {
+  const reduced = useReducedMotion();
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (!active || reduced || roles.length < 2) return;
+
+    const timer = setInterval(() => {
+      setIndex((current) => (current + 1) % roles.length);
+    }, 2200);
+
+    return () => clearInterval(timer);
+  }, [active, reduced]);
+
+  if (reduced) {
+    return (
+      <p className="text-base font-semibold text-zinc-800 dark:text-blue-200 sm:text-lg">
+        {roles.join(" · ")}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex h-7 items-center overflow-hidden sm:h-8">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.p
+          key={roles[index]}
+          initial={{ y: "100%", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "-100%", opacity: 0 }}
+          transition={{ duration: 0.45, ease: EASE }}
+          className="text-base font-semibold text-zinc-800 dark:text-blue-200 sm:text-lg"
+        >
+          {roles[index]}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Hero                                                                */
+/* ------------------------------------------------------------------ */
+
 export default function Hero() {
   const reduced = useReducedMotion();
   const { lite } = usePerformanceMode();
   const heroRef = useRef<HTMLElement>(null);
   const heroInView = useInView(heroRef, { amount: 0.05 });
   const fullName = profile.name;
-  const lastSpace = fullName.lastIndexOf(" ");
+  const words = fullName.split(" ");
+  const lastWordIndex = words.length - 1;
 
-  const [displayed, setDisplayed] = useState("");
-  const [typingDone, setTypingDone] = useState(false);
-  const [roleIndex, setRoleIndex] = useState(0);
   const [splashReady, setSplashReady] = useState(false);
 
+  /* Start the entrance the moment the splash is gone. */
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const start = () => setSplashReady(true);
@@ -159,46 +215,69 @@ export default function Hero() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!splashReady) return;
+  /* ---- entrance choreography (transform + opacity only = GPU) ------ */
+  const v = useMemo(() => {
+    const fade = { duration: 0.2 };
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    if (reduced) {
-      timer = setTimeout(() => {
-        setDisplayed(fullName);
-        setTypingDone(true);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-
-    let index = 0;
-    const tick = () => {
-      index += 1;
-      setDisplayed(fullName.slice(0, index));
-      if (index < fullName.length) {
-        timer = setTimeout(tick, 72);
-      } else {
-        setTypingDone(true);
-      }
+    const column: Variants = {
+      hidden: {},
+      show: {
+        transition: reduced
+          ? { staggerChildren: 0.04 }
+          : { staggerChildren: 0.09, delayChildren: 0.05 },
+      },
     };
 
-    timer = setTimeout(tick, 320);
-    return () => {
-      if (timer) clearTimeout(timer);
+    const item: Variants = reduced
+      ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: fade } }
+      : {
+          hidden: { opacity: 0, y: 24 },
+          show: { opacity: 1, y: 0, transition: { duration: 0.75, ease: EASE } },
+        };
+
+    const title: Variants = {
+      hidden: {},
+      show: { transition: { staggerChildren: reduced ? 0 : 0.12 } },
     };
-  }, [fullName, reduced, splashReady]);
 
-  useEffect(() => {
-    if (!splashReady || !heroInView || reduced || roles.length < 2) return;
+    const word: Variants = reduced
+      ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: fade } }
+      : {
+          hidden: { y: "115%" },
+          show: { y: "0%", transition: { duration: 0.85, ease: EASE } },
+        };
 
-    const timer = setInterval(() => {
-      setRoleIndex((current) => (current + 1) % roles.length);
-    }, 2000);
+    const avatar: Variants = reduced
+      ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: fade } }
+      : {
+          hidden: { opacity: 0, scale: 0.86 },
+          show: {
+            opacity: 1,
+            scale: 1,
+            transition: { duration: 1, ease: EASE, delay: 0.1 },
+          },
+        };
 
-    return () => clearInterval(timer);
-  }, [heroInView, reduced, roles.length, splashReady]);
+    const chip: Variants = reduced
+      ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: fade } }
+      : {
+          hidden: { opacity: 0, scale: 0.6 },
+          show: (i: number) => ({
+            opacity: 1,
+            scale: 1,
+            transition: {
+              type: "spring",
+              stiffness: 260,
+              damping: 18,
+              delay: 0.7 + i * 0.12,
+            },
+          }),
+        };
 
+    return { column, item, title, word, avatar, chip };
+  }, [reduced]);
+
+  /* ---- pointer parallax ------------------------------------------- */
   const pointerX = useMotionValue(0);
   const pointerY = useMotionValue(0);
   const springX = useSpring(pointerX, { stiffness: 60, damping: 18 });
@@ -251,8 +330,7 @@ export default function Hero() {
     pointerY.set(0);
   };
 
-  const leading = displayed.slice(0, lastSpace + 1);
-  const lastWord = displayed.slice(lastSpace + 1);
+  const state = splashReady ? "show" : "hidden";
 
   return (
     <section
@@ -263,24 +341,19 @@ export default function Hero() {
       onPointerLeave={resetParallax}
       className="relative isolate flex min-h-screen items-center overflow-hidden px-4 pb-28 pt-28 sm:px-6 lg:pt-32"
     >
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Background fades in with the content instead of popping in. */}
+      <motion.div
+        aria-hidden
+        initial={{ opacity: 0 }}
+        animate={{ opacity: splashReady ? 1 : 0 }}
+        transition={{ duration: reduced ? 0.2 : 1.2, ease: "easeOut" }}
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
         <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-zinc-50 to-blue-100 dark:from-[#0f172a] dark:via-[#09090b] dark:to-[#1e3a8a]" />
 
-        <div
-          className="absolute inset-0 dark:hidden"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 18% 18%, rgba(37,99,235,0.22), transparent 42%), radial-gradient(circle at 82% 26%, rgba(30,64,175,0.18), transparent 48%), radial-gradient(circle at 52% 88%, rgba(59,130,246,0.16), transparent 52%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 hidden dark:block"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 18% 18%, rgba(37,99,235,0.38), transparent 45%), radial-gradient(circle at 82% 26%, rgba(37,99,235,0.28), transparent 50%), radial-gradient(circle at 52% 88%, rgba(30,64,175,0.32), transparent 55%)",
-          }}
-        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(37,99,235,0.22),transparent_42%),radial-gradient(circle_at_82%_26%,rgba(30,64,175,0.18),transparent_48%),radial-gradient(circle_at_52%_88%,rgba(59,130,246,0.16),transparent_52%)] dark:bg-[radial-gradient(circle_at_18%_18%,rgba(37,99,235,0.38),transparent_45%),radial-gradient(circle_at_82%_26%,rgba(37,99,235,0.28),transparent_50%),radial-gradient(circle_at_52%_88%,rgba(30,64,175,0.32),transparent_55%)]" />
 
+        {/* Blobs use radial gradients (no blur filter): same look, far cheaper. */}
         {!lite && (
           <>
             <motion.div
@@ -288,7 +361,7 @@ export default function Hero() {
               className="absolute -left-24 -top-20"
             >
               <div
-                className="h-72 w-72 animate-float rounded-full bg-blue-400/30 blur-2xl motion-reduce:animate-none sm:h-96 sm:w-96 dark:bg-blue-600/20"
+                className="h-72 w-72 animate-float rounded-full bg-[radial-gradient(circle,rgba(96,165,250,0.42),transparent_70%)] motion-reduce:animate-none sm:h-96 sm:w-96 dark:bg-[radial-gradient(circle,rgba(37,99,235,0.3),transparent_70%)]"
                 style={{ animationDelay: "0s", animationDuration: "7s" }}
               />
             </motion.div>
@@ -298,7 +371,7 @@ export default function Hero() {
               className="absolute -right-24 top-1/4"
             >
               <div
-                className="h-80 w-80 animate-float rounded-full bg-blue-500/25 blur-2xl motion-reduce:animate-none dark:bg-blue-500/15"
+                className="h-80 w-80 animate-float rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.36),transparent_70%)] motion-reduce:animate-none dark:bg-[radial-gradient(circle,rgba(59,130,246,0.22),transparent_70%)]"
                 style={{ animationDelay: "1.6s", animationDuration: "8s" }}
               />
             </motion.div>
@@ -308,7 +381,7 @@ export default function Hero() {
               className="absolute -bottom-28 left-1/3"
             >
               <div
-                className="h-80 w-80 animate-float rounded-full bg-blue-600/20 blur-2xl motion-reduce:animate-none sm:h-[26rem] sm:w-[26rem] dark:bg-blue-700/20"
+                className="h-80 w-80 animate-float rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.3),transparent_70%)] motion-reduce:animate-none sm:h-[26rem] sm:w-[26rem] dark:bg-[radial-gradient(circle,rgba(29,78,216,0.3),transparent_70%)]"
                 style={{ animationDelay: "3s", animationDuration: "9s" }}
               />
             </motion.div>
@@ -316,24 +389,29 @@ export default function Hero() {
         )}
 
         <div className="absolute inset-0 grid-bg opacity-70 dark:opacity-40" />
-        <div className="absolute inset-0">
-          <div className="noise h-full w-full" />
-        </div>
+        {!lite && (
+          <div className="absolute inset-0">
+            <div className="noise h-full w-full" />
+          </div>
+        )}
         <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[#fafafa] dark:to-[#09090b]" />
-      </div>
+      </motion.div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+      {/* One parent drives the whole choreography via variants. */}
+      <motion.div
+        initial="hidden"
+        animate={state}
+        className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8"
+      >
+        {/* ---------------- text column ---------------- */}
         <motion.div
-          initial={{ opacity: 0, y: reduced ? 0 : 14 }}
-          animate={
-            splashReady
-              ? { opacity: 1, y: 0 }
-              : { opacity: 0, y: reduced ? 0 : 14 }
-          }
-          transition={{ duration: reduced ? 0.15 : 0.45, ease: "easeOut" }}
+          variants={v.column}
           className="order-2 text-center lg:order-1 lg:text-left"
         >
-          <div className="flex flex-col items-center gap-2 lg:items-start">
+          <motion.div
+            variants={v.item}
+            className="flex flex-col items-center gap-2 lg:items-start"
+          >
             <span className="inline-flex items-center gap-2 font-mono text-[10px] font-medium uppercase tracking-[0.3em] text-blue-700 dark:text-blue-300">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-600 opacity-60 motion-reduce:animate-none dark:bg-blue-400" />
@@ -342,51 +420,47 @@ export default function Hero() {
               Open to opportunities
             </span>
 
-            {reduced ? (
-              <p className="text-base font-semibold text-zinc-800 dark:text-blue-200 sm:text-lg">
-                {roles.join(" · ")}
-              </p>
-            ) : (
-              <div className="flex h-7 items-center overflow-hidden sm:h-8">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.p
-                    key={roles[roleIndex]}
-                    initial={{ y: "100%", opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: "-100%", opacity: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="text-base font-semibold text-zinc-800 dark:text-blue-200 sm:text-lg"
-                  >
-                    {roles[roleIndex]}
-                  </motion.p>
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
+            <RoleRotator active={splashReady && heroInView} />
+          </motion.div>
 
-          <h1
+          {/* Name: each word slides up out of a mask. No per-letter state, no re-renders. */}
+          <motion.h1
+            variants={v.title}
             aria-label={fullName}
-            className="mt-3 min-h-[1.1em] text-4xl font-bold leading-[1.05] text-zinc-900 dark:text-white sm:text-5xl xl:text-6xl"
+            className="mt-3 text-4xl font-bold leading-[1.05] text-zinc-900 dark:text-white sm:text-5xl xl:text-6xl"
           >
-            <span aria-hidden>
-              {leading}
-              <span className="text-gradient">{lastWord}</span>
-            </span>
-            {!typingDone && (
-              <span
-                aria-hidden
-                className="ml-1 inline-block h-[0.85em] w-[3px] translate-y-[0.06em] animate-[blink_0.9s_step-end_infinite] rounded-full bg-blue-700 align-middle motion-reduce:animate-none dark:bg-blue-300"
-              />
-            )}
-          </h1>
+            {words.map((w, i) => (
+              <span key={`${w}-${i}`} aria-hidden>
+                <span className="-mb-[0.14em] inline-block overflow-hidden pb-[0.14em] align-bottom">
+                  <motion.span
+                    variants={v.word}
+                    className={`inline-block will-change-transform ${
+                      i === lastWordIndex ? "text-gradient" : ""
+                    }`}
+                  >
+                    {w}
+                  </motion.span>
+                </span>
+                {i < lastWordIndex ? " " : null}
+              </span>
+            ))}
+          </motion.h1>
 
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base lg:mx-0">
+          <motion.p
+            variants={v.item}
+            className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base lg:mx-0"
+          >
             {profile.tagline}
-          </p>
+          </motion.p>
 
-          <SocialLinks className="mt-7 justify-center lg:justify-start" />
+          <motion.div variants={v.item} className="mt-7">
+            <SocialLinks className="justify-center lg:justify-start" />
+          </motion.div>
 
-          <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
+          <motion.div
+            variants={v.item}
+            className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start"
+          >
             <MagneticLink href="#projects" variant="primary" icon="arrow-right">
               View Projects
             </MagneticLink>
@@ -400,23 +474,18 @@ export default function Hero() {
                 Download CV
               </MagneticLink>
             )}
-          </div>
+          </motion.div>
         </motion.div>
 
+        {/* ---------------- avatar column ---------------- */}
         <motion.div
-          initial={{ opacity: 0, scale: reduced ? 1 : 0.96 }}
-          animate={
-            splashReady
-              ? { opacity: 1, scale: 1 }
-              : { opacity: 0, scale: reduced ? 1 : 0.96 }
-          }
-          transition={{ duration: reduced ? 0.15 : 0.5, ease: "easeOut" }}
+          variants={v.avatar}
           style={reduced || lite ? undefined : { x: avatarX, y: avatarY }}
-          className="order-1 relative mx-auto mt-2 h-60 w-60 sm:h-72 sm:w-72 lg:order-2 lg:mt-0 lg:h-[21rem] lg:w-[21rem]"
+          className="order-1 relative mx-auto mt-2 h-60 w-60 will-change-transform sm:h-72 sm:w-72 lg:order-2 lg:mt-0 lg:h-[21rem] lg:w-[21rem]"
         >
-          <div className="absolute -inset-12 rounded-full bg-blue-500/20 blur-2xl dark:bg-blue-500/10" />
+          <div className="absolute -inset-12 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.3),transparent_70%)] dark:bg-[radial-gradient(circle,rgba(59,130,246,0.18),transparent_70%)]" />
           {!lite && (
-            <div className="absolute -inset-[10px] animate-spin-slow rounded-full bg-[conic-gradient(from_0deg,#1e3a8a,#2563eb,#bfdbfe,#1e40af,#1e3a8a)] blur-[1px] motion-reduce:animate-none" />
+            <div className="absolute -inset-[10px] animate-spin-slow rounded-full bg-[conic-gradient(from_0deg,#1e3a8a,#2563eb,#bfdbfe,#1e40af,#1e3a8a)] motion-reduce:animate-none" />
           )}
           <div className="absolute -inset-[5px] rounded-full bg-[#fafafa] dark:bg-[#09090b]" />
 
@@ -437,9 +506,11 @@ export default function Hero() {
             </TiltCard>
           </div>
 
-          {floatingChips.map((chip) => (
+          {floatingChips.map((chip, i) => (
             <motion.div
               key={chip.label}
+              custom={i}
+              variants={v.chip}
               style={reduced || lite ? undefined : { x: chipX, y: chipY }}
               className={`absolute z-20 ${chip.position}`}
             >
@@ -452,9 +523,15 @@ export default function Hero() {
             </motion.div>
           ))}
         </motion.div>
-      </div>
+      </motion.div>
 
-      <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5">
+      {/* Scroll cue appears last, after everything has settled. */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: splashReady ? 1 : 0 }}
+        transition={{ duration: 0.6, delay: reduced ? 0 : 1.6, ease: "easeOut" }}
+        className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5"
+      >
         <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-zinc-500 dark:text-zinc-400">
           Scroll
         </span>
@@ -469,7 +546,7 @@ export default function Hero() {
             transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
           />
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }
